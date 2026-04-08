@@ -1,0 +1,14 @@
+diff --git a/Tools/ros2/ardupilot_sitl/src/ardupilot_sitl/launch.py b/Tools/ros2/ardupilot_sitl/src/ardupilot_sitl/launch.py
+index e8ddd4ab60..3aa17a17c3 100644
+--- a/Tools/ros2/ardupilot_sitl/src/ardupilot_sitl/launch.py
++++ b/Tools/ros2/ardupilot_sitl/src/ardupilot_sitl/launch.py
+@@ -361,7 +361,8 @@ class MAVProxyLaunch:
+             ),
+             DeclareLaunchArgument(
+                 "out",
+-                default_value="127.0.0.1:14550",
++                # default_value="127.0.0.1:14550",
++                default_value="10.130.200.29:14555",
+                 description="MAVLink output port and optional baud rate.",
+             ),
+             DeclareLaunchArgument(

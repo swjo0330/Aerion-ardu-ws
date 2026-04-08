@@ -1,0 +1,139 @@
+<sdf version='1.10'>
+  <world name='map'>
+
+    <!-- <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/> -->
+    <plugin
+        filename="libMissilePoseSetter.so"
+        name="missile_control::MissilePoseSetter"/>
+
+    <physics name='1ms' type='ignore'>
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1</real_time_factor>
+      <real_time_update_rate>1000</real_time_update_rate>
+    </physics>
+    <plugin name='gz::sim::systems::Physics' filename='gz-sim-physics-system'/>
+    <plugin name='gz::sim::systems::Sensors' filename='gz-sim-sensors-system'>
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin name='gz::sim::systems::UserCommands' filename='gz-sim-user-commands-system'/>
+    <plugin name='gz::sim::systems::SceneBroadcaster' filename='gz-sim-scene-broadcaster-system'/>
+    <plugin name='gz::sim::systems::AirPressure' filename='gz-sim-air-pressure-system'/>
+    <plugin name='gz::sim::systems::AirSpeed' filename='gz-sim-air-speed-system'/>
+    <plugin name='gz::sim::systems::Altimeter' filename='gz-sim-altimeter-system'/>
+    <plugin name='gz::sim::systems::Imu' filename='gz-sim-imu-system'/>
+    <plugin name='gz::sim::systems::Magnetometer' filename='gz-sim-magnetometer-system'/>
+    <plugin name='gz::sim::systems::NavSat' filename='gz-sim-navsat-system'/>
+    
+    <!-- 🔥 화재/연기 파티클 시스템 추가 -->
+    <plugin name='gz::sim::systems::ParticleEmitter' filename='gz-sim-particle-emitter-system'/>
+
+    <scene>
+      <ambient>1 1 1 1</ambient>
+      <background>0.800000012 0.800000012 0.800000012 1</background>
+      <sky/>
+      <shadows>true</shadows>
+    </scene>
+    <spherical_coordinates>
+      <latitude_deg>37.394476519999998</latitude_deg>
+      <longitude_deg>126.6381927</longitude_deg>
+      <elevation>10</elevation>
+      <heading_deg>0</heading_deg>
+      <surface_model>EARTH_WGS84</surface_model>
+    </spherical_coordinates>
+    <gravity>0 0 -9.8000000000000007</gravity>
+    <magnetic_field>5.5644999999999998e-06 2.2875799999999999e-05 -4.2388400000000002e-05</magnetic_field>
+    <atmosphere type='adiabatic'/>
+    
+    <include>
+      <uri>model://runway</uri>
+      <name>runway</name>
+      <pose>-29 545 0 0 0 0.05235987755982998</pose>
+    </include>
+    <include>
+      <uri>model://iris_with_gimbal</uri>
+      <name>iris</name>
+      <pose>0.085387108415330801 0.063087414765306382 0.19499919823682843 1.8485189014768222e-07 1.3432032565256108e-07 1.5991219356095252</pose>
+    </include>
+
+    <!-- 건물 샘플 url-->
+     <!-- <include>
+      <uri>https://fuel.gazebosim.org/1.0/YueqianLiu/models/Nathan%20Benderson%20Park</uri>
+      <name>nathan_park</name>
+      <pose>0 200 20 0 0 -1.5708</pose>
+    </include> -->
+
+    <!-- tethys_equipped not available on this system, skipped -->
+    <!--
+    <include>
+      <uri>file:///home/clrobur/lrauv_ws/build/lrauv_description/models/tethys_equipped</uri>
+       <name>tethys</name>
+    </include>
+    -->
+
+
+    <include>
+  <uri>https://fuel.gazebosim.org/1.0/chapulina/models/Apartment</uri>
+  <pose>0 30 0 0 0 -1.5708</pose>
+    </include>
+
+<!-- ================== FIRE / SMOKE (FOG GENERATOR - OFFICIAL) ================== -->
+<include>
+  <uri>https://fuel.ignitionrobotics.org/1.0/openrobotics/models/fog generator</uri>
+  <name>fire_smoke_1</name>
+
+  <!-- 🔥 화재 위치 (건물 위) -->
+  <pose>0 25 5 0 -1.5707 0</pose>
+</include>
+
+
+
+<include>
+  <uri>https://fuel.ignitionrobotics.org/1.0/openrobotics/models/fog generator</uri>
+  <name>fire_smoke_2</name>
+
+  <!-- 🔥 화재 위치 (건물 위) -->
+  <pose>0 25 20 0 -1.5707 0</pose>
+  <size>100 100 100</size>
+</include>
+
+
+
+<!-- 🔥 화염 느낌용 불빛 -->
+<!-- <light name="fire_light_1" type="point">
+  <pose>0 200 35 0 0 0</pose>
+  <cast_shadows>false</cast_shadows>
+  <intensity>10</intensity>
+  <diffuse>1 0.45 0.15 1</diffuse>
+  <attenuation>
+    <range>300</range>
+    <linear>0.002</linear>
+    <quadratic>0.00002</quadratic>
+  </attenuation>
+</light> -->
+<!-- =========================================================================== -->
+
+
+
+  
+
+    <light name='sun' type='directional'>
+      <pose>0 0 10 0 0 0</pose>
+      <cast_shadows>true</cast_shadows>
+      <intensity>1</intensity>
+      <direction>-0.5 0.10000000000000001 -0.90000000000000002</direction>
+      <diffuse>0.800000012 0.800000012 0.800000012 1</diffuse>
+      <specular>0.800000012 0.800000012 0.800000012 1</specular>
+      <attenuation>
+        <range>1000</range>
+        <linear>0.01</linear>
+        <constant>0.90000000000000002</constant>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+      <spot>
+        <inner_angle>0</inner_angle>
+        <outer_angle>0</outer_angle>
+        <falloff>0</falloff>
+      </spot>
+    </light>
+  </world>
+</sdf>

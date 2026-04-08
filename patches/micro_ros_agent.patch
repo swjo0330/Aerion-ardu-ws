@@ -1,0 +1,12 @@
+diff --git a/micro_ros_agent/cmake/SuperBuild.cmake b/micro_ros_agent/cmake/SuperBuild.cmake
+index 46f4ed2..bd9c155 100644
+--- a/micro_ros_agent/cmake/SuperBuild.cmake
++++ b/micro_ros_agent/cmake/SuperBuild.cmake
+@@ -46,6 +46,7 @@ if(NOT xrceagent_FOUND)
+                 -DUAGENT_USE_SYSTEM_FASTDDS:BOOL=ON
+                 -DUAGENT_USE_SYSTEM_FASTCDR:BOOL=ON
+                 -DUAGENT_USE_SYSTEM_LOGGER:BOOL=${UAGENT_USE_SYSTEM_LOGGER}
++                -DSPDLOG_FMT_EXTERNAL:BOOL=OFF
+                 -DUAGENT_CED_PROFILE:BOOL=OFF
+                 -DUAGENT_P2P_PROFILE:BOOL=OFF
+                 -DUAGENT_BUILD_EXECUTABLE:BOOL=OFF

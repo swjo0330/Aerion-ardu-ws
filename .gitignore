@@ -1,0 +1,41 @@
+# Build artifacts
+build/
+install/
+log/
+logs/
+
+# Runtime data
+mav.tlog
+mav.tlog.raw
+mav.parm
+eeprom.bin
+*.tlog
+*.tlog.raw
+
+# External source packages (managed via ardu_ws.repos)
+src/ardupilot/
+src/ardupilot_sitl_models/
+src/gps_umd/
+src/micro_ros_msgs/
+src/ros_gz/
+src/sdformat_urdf/
+src/micro_ros_agent/
+src/ardupilot_gz/
+src/ardupilot_gazebo/
+
+# Micro-XRCE-DDS-Gen
+Micro-XRCE-DDS-Gen/
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+
+# colcon
+*.egg-info/
+
+# Terrain / test files
+terrain/
+test/

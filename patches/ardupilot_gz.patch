@@ -1,0 +1,37 @@
+diff --git a/ardupilot_gz_bringup/launch/iris_runway.launch.py b/ardupilot_gz_bringup/launch/iris_runway.launch.py
+index dbf977a..db07ebd 100644
+--- a/ardupilot_gz_bringup/launch/iris_runway.launch.py
++++ b/ardupilot_gz_bringup/launch/iris_runway.launch.py
+@@ -61,7 +61,7 @@ def generate_launch_description():
+                         FindPackageShare("ardupilot_gz_bringup"),
+                         "launch",
+                         "robots",
+-                        "iris.launch.py",
++                        "iris.launch.py", # "iris.launch.py",
+                     ]
+                 ),
+             ]
+@@ -75,7 +75,10 @@ def generate_launch_description():
+         ),
+         launch_arguments={
+             "gz_args": "-v4 -s -r "
+-            f'{Path(pkg_project_gazebo) / "worlds" / "iris_runway.sdf"}'
++            # f'{Path(pkg_project_gazebo) / "worlds" / "iris_runway_des.sdf"}'
++             f'{Path(pkg_project_gazebo) / "worlds" / "iris_runway_des_fire.sdf"}'
++            # f'{Path(pkg_project_gazebo) / "worlds" / "iris_runway_remove_object.sdf"}'
++            
+         }.items(),
+     )
+ 
+diff --git a/ardupilot_gz_bringup/launch/robots/iris.launch.py b/ardupilot_gz_bringup/launch/robots/iris.launch.py
+index aa067e8..9ba6fc1 100644
+--- a/ardupilot_gz_bringup/launch/robots/iris.launch.py
++++ b/ardupilot_gz_bringup/launch/robots/iris.launch.py
+@@ -98,6 +98,7 @@ def generate_launch_description():
+             "sim_address": "127.0.0.1",
+             "master": "tcp:127.0.0.1:5760",
+             "sitl": "127.0.0.1:5501",
++            "home": "37.39447652,126.6381927,10,0",
+         }.items(),
+     )
+ 
