@@ -146,7 +146,7 @@ export CYCLONEDDS_URI='<CycloneDDS><Domain><General><AllowMulticast>false</Allow
 
 > **주의**: 이 Mac에서 `AllowMulticast=false`를 설정하면 로컬 노드끼리 discovery 실패합니다. 절대 추가하지 마세요.
 
-### 공유되는 토픽
+### 공유되는 토픽 (요약)
 
 | 발행측 | 토픽 | 설명 |
 |--------|------|------|
@@ -154,8 +154,195 @@ export CYCLONEDDS_URI='<CycloneDDS><Domain><General><AllowMulticast>false</Allow
 | SITL Mac (.35) | `/imu`, `/navsat`, `/odometry`, `/air_pressure` | 센서 데이터 |
 | SITL Mac (.35) | `/magnetometer`, `/battery` | 추가 센서 |
 | SITL Mac (.35) | `/ap/*` | ArduPilot DDS (micro_ros_agent) |
+| SITL Mac (.35) | `/gz/tf`, `/gz/tf_static`, `/clock`, `/joint_states` | Gazebo TF/시간 |
 | 원격 PC (.33) | `/mavros/*` | MAVProxy → MAVROS |
 | 원격 PC (.33) | `/a2a/*`, `/vision/*`, `/perception/*` | 에이전트/비전 |
+
+### 전체 토픽 리스트
+
+양쪽 CycloneDDS 연결 시 보이는 전체 토픽 (2026-04-09 확인):
+
+<details>
+<summary>토픽 전체 목록 (펼치기)</summary>
+
+```
+/a2a/drone1/decision
+/a2a/drone1/mission_command
+/air_pressure
+/ap/airspeed
+/ap/battery
+/ap/clock
+/ap/cmd_gps_pose
+/ap/cmd_vel
+/ap/geopose/filtered
+/ap/goal_lla
+/ap/gps_global_origin/filtered
+/ap/imu/experimental/data
+/ap/joy
+/ap/navsat
+/ap/pose/filtered
+/ap/status
+/ap/tf
+/ap/tf_static
+/ap/time
+/ap/twist/filtered
+/battery
+/camera/camera_info
+/camera/image
+/clicked_point
+/clock
+/diagnostics
+/goal_pose
+/gz/tf
+/gz/tf_static
+/imu
+/initialpose
+/joint_states
+/magnetometer
+/mavros/adsb/send
+/mavros/adsb/vehicle
+/mavros/battery
+/mavros/cam_imu_sync/cam_imu_stamp
+/mavros/camera/image_captured
+/mavros/cellular_status/status
+/mavros/companion_process/status
+/mavros/esc_status/info
+/mavros/esc_status/status
+/mavros/esc_telemetry/telemetry
+/mavros/estimator_status
+/mavros/extended_state
+/mavros/fake_gps/mocap/pose
+/mavros/geofence/fences
+/mavros/gimbal_control/device/attitude_status
+/mavros/gimbal_control/device/info
+/mavros/gimbal_control/device/set_attitude
+/mavros/gimbal_control/manager/info
+/mavros/gimbal_control/manager/set_attitude
+/mavros/gimbal_control/manager/set_manual_control
+/mavros/gimbal_control/manager/set_pitchyaw
+/mavros/gimbal_control/manager/status
+/mavros/global_position/compass_hdg
+/mavros/global_position/global
+/mavros/global_position/gp_lp_offset
+/mavros/global_position/gp_origin
+/mavros/global_position/local
+/mavros/global_position/raw/fix
+/mavros/global_position/raw/gps_vel
+/mavros/global_position/raw/satellites
+/mavros/global_position/rel_alt
+/mavros/global_position/set_gp_origin
+/mavros/gps_input/gps_input
+/mavros/gps_rtk/rtk_baseline
+/mavros/gps_rtk/send_rtcm
+/mavros/gpsstatus/gps1/raw
+/mavros/gpsstatus/gps1/rtk
+/mavros/gpsstatus/gps2/raw
+/mavros/gpsstatus/gps2/rtk
+/mavros/home_position/home
+/mavros/home_position/set
+/mavros/imu/data
+/mavros/imu/data_raw
+/mavros/imu/diff_pressure
+/mavros/imu/mag
+/mavros/imu/static_pressure
+/mavros/imu/temperature_baro
+/mavros/imu/temperature_imu
+/mavros/landing_target/lt_marker
+/mavros/landing_target/pose
+/mavros/landing_target/pose_in
+/mavros/local_position/accel
+/mavros/local_position/odom
+/mavros/local_position/pose
+/mavros/local_position/pose_cov
+/mavros/local_position/velocity_body
+/mavros/local_position/velocity_body_cov
+/mavros/local_position/velocity_local
+/mavros/log_transfer/raw/log_data
+/mavros/log_transfer/raw/log_entry
+/mavros/mag_calibration/report
+/mavros/mag_calibration/status
+/mavros/manual_control/control
+/mavros/manual_control/send
+/mavros/mission/reached
+/mavros/mission/waypoints
+/mavros/mocap/pose
+/mavros/mocap/tf
+/mavros/mount_control/command
+/mavros/mount_control/orientation
+/mavros/mount_control/status
+/mavros/nav_controller_output/output
+/mavros/obstacle/send
+/mavros/odometry/in
+/mavros/odometry/out
+/mavros/onboard_computer/status
+/mavros/optical_flow/ground_distance
+/mavros/optical_flow/raw/optical_flow
+/mavros/optical_flow/raw/send
+/mavros/param/event
+/mavros/play_tune
+/mavros/radio_status
+/mavros/rallypoint/rallypoints
+/mavros/rangefinder/rangefinder
+/mavros/rangefinder_pub
+/mavros/rangefinder_sub
+/mavros/rc/in
+/mavros/rc/out
+/mavros/rc/override
+/mavros/setpoint_accel/accel
+/mavros/setpoint_attitude/cmd_vel
+/mavros/setpoint_attitude/thrust
+/mavros/setpoint_position/global
+/mavros/setpoint_position/global_to_local
+/mavros/setpoint_position/local
+/mavros/setpoint_raw/attitude
+/mavros/setpoint_raw/global
+/mavros/setpoint_raw/local
+/mavros/setpoint_raw/target_attitude
+/mavros/setpoint_raw/target_global
+/mavros/setpoint_raw/target_local
+/mavros/setpoint_trajectory/desired
+/mavros/setpoint_trajectory/local
+/mavros/setpoint_velocity/cmd_vel
+/mavros/setpoint_velocity/cmd_vel_unstamped
+/mavros/state
+/mavros/status_event
+/mavros/statustext/recv
+/mavros/statustext/send
+/mavros/sys_status
+/mavros/terrain/report
+/mavros/time_reference
+/mavros/timesync_status
+/mavros/trajectory/desired
+/mavros/trajectory/generated
+/mavros/trajectory/path
+/mavros/tunnel/in
+/mavros/tunnel/out
+/mavros/vfr_hud
+/mavros/vision_pose/pose
+/mavros/vision_pose/pose_cov
+/mavros/vision_speed/speed_twist
+/mavros/vision_speed/speed_twist_cov
+/mavros/vision_speed/speed_vector
+/mavros/wind_estimation
+/move_base_simple/goal
+/navsat
+/odometry
+/parameter_events
+/perception/state
+/replan_waypoints
+/robot_description
+/rosout
+/tf
+/tf_static
+/uas1/mavlink_sink
+/uas1/mavlink_source
+/vision/detect_frame
+/vision/detect_information
+/vision/detect_target
+/vision/target_data
+```
+
+</details>
 
 ---
 
