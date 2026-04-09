@@ -146,19 +146,62 @@ export CYCLONEDDS_URI='<CycloneDDS><Domain><General><AllowMulticast>false</Allow
 
 > **주의**: 이 Mac에서 `AllowMulticast=false`를 설정하면 로컬 노드끼리 discovery 실패합니다. 절대 추가하지 마세요.
 
-### 공유되는 토픽 (요약)
+### 토픽 목록
 
-| 발행측 | 토픽 | 설명 |
-|--------|------|------|
-| SITL Mac (.35) | `/camera/image`, `/camera/camera_info` | Gazebo 카메라 |
-| SITL Mac (.35) | `/imu`, `/navsat`, `/odometry`, `/air_pressure` | 센서 데이터 |
-| SITL Mac (.35) | `/magnetometer`, `/battery` | 추가 센서 |
-| SITL Mac (.35) | `/ap/*` | ArduPilot DDS (micro_ros_agent) |
-| SITL Mac (.35) | `/gz/tf`, `/gz/tf_static`, `/clock`, `/joint_states` | Gazebo TF/시간 |
-| 원격 PC (.33) | `/mavros/*` | MAVProxy → MAVROS |
-| 원격 PC (.33) | `/a2a/*`, `/vision/*`, `/perception/*` | 에이전트/비전 |
+전체 토픽 목록은 [TOPICS.md](TOPICS.md) 참고
 
-### 전체 토픽 리스트
+---
+
+_아래는 README 내 요약 (상세는 TOPICS.md)_
+
+### SITL Mac (.35) 발행 토픽
+
+ArduPilot SITL + Gazebo + ros_gz_bridge에서 생성하는 토픽:
+
+**ArduPilot DDS (micro_ros_agent)**
+| 토픽 | 타입 | 설명 |
+|------|------|------|
+| `/ap/airspeed` | | 대기속도 |
+| `/ap/battery` | | 배터리 상태 |
+| `/ap/clock` | | ArduPilot 시계 |
+| `/ap/cmd_gps_pose` | | GPS 위치 명령 (구독) |
+| `/ap/cmd_vel` | | 속도 명령 (구독) |
+| `/ap/geopose/filtered` | | 필터링된 지오포즈 |
+| `/ap/goal_lla` | | 목표 위경도고도 (구독) |
+| `/ap/gps_global_origin/filtered` | | GPS 원점 |
+| `/ap/imu/experimental/data` | | IMU 데이터 |
+| `/ap/joy` | | 조이스틱 (구독) |
+| `/ap/navsat` | | GPS NavSat |
+| `/ap/pose/filtered` | | 필터링된 포즈 |
+| `/ap/status` | | 비행 상태 |
+| `/ap/tf` | | TF |
+| `/ap/tf_static` | | 정적 TF |
+| `/ap/time` | | 시간 |
+| `/ap/twist/filtered` | | 필터링된 속도 |
+
+**ros_gz_bridge (Gazebo → ROS2)**
+| 토픽 | 타입 | 설명 |
+|------|------|------|
+| `/camera/image` | `sensor_msgs/Image` | 짐벌 카메라 영상 |
+| `/camera/camera_info` | `sensor_msgs/CameraInfo` | 카메라 정보 |
+| `/imu` | `sensor_msgs/Imu` | IMU 센서 |
+| `/navsat` | `sensor_msgs/NavSatFix` | GPS |
+| `/odometry` | `nav_msgs/Odometry` | 오도메트리 |
+| `/air_pressure` | `sensor_msgs/FluidPressure` | 기압 |
+| `/magnetometer` | `sensor_msgs/MagneticField` | 지자기 |
+| `/battery` | `sensor_msgs/BatteryState` | 배터리 |
+| `/clock` | `rosgraph_msgs/Clock` | 시뮬레이션 시계 |
+| `/joint_states` | `sensor_msgs/JointState` | 관절 상태 |
+| `/gz/tf` | `tf2_msgs/TFMessage` | Gazebo TF |
+| `/gz/tf_static` | `tf2_msgs/TFMessage` | Gazebo 정적 TF |
+
+**기타 (robot_state_publisher, relay, rviz2)**
+| 토픽 | 설명 |
+|------|------|
+| `/robot_description` | URDF 모델 |
+| `/tf`, `/tf_static` | ROS TF 트리 |
+
+### 전체 토픽 리스트 (양쪽 합산)
 
 양쪽 CycloneDDS 연결 시 보이는 전체 토픽 (2026-04-09 확인):
 
