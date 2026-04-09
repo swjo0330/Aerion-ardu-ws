@@ -23,9 +23,9 @@ ${SCRIPT_DIR}/install/ardupilot_gazebo/share/ardupilot_gazebo/worlds:\
 /opt/homebrew/share/gz:\
 ${GZ_SIM_RESOURCE_PATH}"
 
-# Zenoh RMW 설정
-export RMW_IMPLEMENTATION=rmw_zenoh_cpp
-export ZENOH_ROUTER_URI=tcp/10.130.200.29:7447
+# RMW 설정 (CycloneDDS + 원격 피어)
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+export CYCLONEDDS_URI='<CycloneDDS><Domain><General><Interfaces><NetworkInterface name="en0"/></Interfaces></General><Discovery><Peers><Peer address="10.130.200.33"/></Peers></Discovery></Domain></CycloneDDS>'
 
 source "${SCRIPT_DIR}/install/setup.bash"
 

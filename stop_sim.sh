@@ -9,6 +9,7 @@ pkill -f micro_ros_agent 2>/dev/null
 pkill -f parameter_bridge 2>/dev/null
 pkill -f robot_state_publisher 2>/dev/null
 pkill -f relay 2>/dev/null
+pkill -f rmw_zenohd 2>/dev/null
 
 sleep 2
 

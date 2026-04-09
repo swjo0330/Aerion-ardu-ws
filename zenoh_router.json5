@@ -1,0 +1,35 @@
+{
+  mode: "router",
+
+  connect: {
+    timeout_ms: { router: 0, peer: 0, client: 0 },
+    endpoints: [
+      "tcp/10.130.200.29:7447"
+    ],
+    exit_on_failure: { router: false, peer: false, client: false },
+    retry: {
+      period_init_ms: 1000,
+      period_max_ms: 8000,
+      period_increase_factor: 2,
+    },
+  },
+
+  listen: {
+    timeout_ms: 0,
+    endpoints: [
+      "tcp/[::]:7447"
+    ],
+  },
+
+  transport: {
+    link: {
+      tx: {
+        batch_size: 16777215,
+      },
+      rx: {
+        buffer_size: 16777216,
+        max_message_size: 16777216,
+      },
+    },
+  },
+}
