@@ -25,7 +25,7 @@ ${GZ_SIM_RESOURCE_PATH}"
 
 # RMW 설정 (CycloneDDS + 원격 피어)
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-export CYCLONEDDS_URI='<CycloneDDS><Domain><General><Interfaces><NetworkInterface name="en0"/></Interfaces></General><Discovery><Peers><Peer address="10.130.200.33"/></Peers></Discovery></Domain></CycloneDDS>'
+export CYCLONEDDS_URI="file://${SCRIPT_DIR}/cyclonedds.xml"
 
 source "${SCRIPT_DIR}/install/setup.bash"
 
