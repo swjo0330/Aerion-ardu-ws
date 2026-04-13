@@ -22,8 +22,10 @@ echo ""
 echo "=== 네트워크 ==="
 EN0_IP=$(ifconfig en0 2>/dev/null | grep "inet " | awk '{print $2}')
 EN5_IP=$(ifconfig en5 2>/dev/null | grep "inet " | awk '{print $2}')
+EN7_IP=$(ifconfig en7 2>/dev/null | grep "inet " | awk '{print $2}')
 echo "  en0 (Wi-Fi): ${EN0_IP:-없음}"
 echo "  en5 (유선):  ${EN5_IP:-없음}"
+echo "  en7 (유선):  ${EN7_IP:-없음}"
 echo "  ping $REMOTE_IP:"
 PING_RESULT=$(ping -c 3 -t 3 "$REMOTE_IP" 2>&1 | tail -1)
 echo "  $PING_RESULT"
@@ -71,8 +73,8 @@ echo ""
 
 # 5. 원격 전송 확인 (대형 UDP 패킷)
 echo "=== 원격 전송 확인 (en5 → $REMOTE_IP, 3초) ==="
-NIC="en5"
-if [ -z "$EN5_IP" ]; then NIC="en0"; fi
+NIC=$(route get "$REMOTE_IP" 2>/dev/null | grep "interface" | awk '{print $2}')
+if [ -z "$NIC" ]; then NIC="en0"; fi
 COUNT=$(sudo timeout 3 tcpdump -i "$NIC" host "$REMOTE_IP" and udp and greater 1400 -n 2>&1 | grep -c "IP ")
 if [ "$COUNT" -gt 0 ]; then
     echo "  ✅ 대형 UDP 패킷 ${COUNT}개 전송 중 (이미지 fragment)"

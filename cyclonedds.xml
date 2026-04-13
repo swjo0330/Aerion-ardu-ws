@@ -5,7 +5,7 @@
   <Domain>
     <General>
       <Interfaces>
-        <NetworkInterface name="en5"/>
+        <NetworkInterface name="en7"/>
       </Interfaces>
       <MaxMessageSize>1400B</MaxMessageSize>
       <FragmentSize>1344B</FragmentSize>
