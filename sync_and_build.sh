@@ -52,7 +52,16 @@ else
 fi
 
 # ------------------------------------
-# 4. 메모리 파일 IP 업데이트
+# 4. cyclonedds.xml Peer 주소 업데이트
+# ------------------------------------
+CYCLONE_XML="${WORKSPACE}/cyclonedds.xml"
+if [ -f "${CYCLONE_XML}" ]; then
+    sed -i '' "s|<Peer address=\"[0-9.]*\"/>|<Peer address=\"${OUT_IP}\"/>|" "${CYCLONE_XML}"
+    echo "cyclonedds.xml Peer 업데이트: ${OUT_IP}"
+fi
+
+# ------------------------------------
+# 5. 메모리 파일 IP 업데이트
 # ------------------------------------
 MEMORY_FILE="${HOME}/.claude/projects/-Users-swjo-yonsei-ai-aerion/memory/project_ardu_ws.md"
 if [ -f "${MEMORY_FILE}" ]; then
@@ -62,7 +71,7 @@ if [ -f "${MEMORY_FILE}" ]; then
 fi
 
 # ------------------------------------
-# 5. 재빌드
+# 6. 재빌드
 # ------------------------------------
 echo ""
 echo "ardupilot_sitl 재빌드 중..."
@@ -76,7 +85,7 @@ conda activate ros_env
 
 export GZ_VERSION=harmonic
 export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig:${PKG_CONFIG_PATH}"
-export PATH="/opt/homebrew/opt/openjdk/bin:/opt/homebrew/bin:${PATH}"
+export PATH="/opt/homebrew/opt/openjdk/bin:${WORKSPACE}/Micro-XRCE-DDS-Gen/scripts:/opt/homebrew/bin:${PATH}"
 
 cd "${WORKSPACE}"
 colcon build \
@@ -94,5 +103,12 @@ echo " 동기화 완료"
 echo " 내 IP    : ${MY_IP}"
 echo " out 대상 : ${OUT_TARGET}"
 echo "============================================"
+echo ""
+echo "============================================"
+echo " 재부팅 후 필수 sysctl 설정 (아직 안 했다면):"
+echo "============================================"
+echo "  sudo sysctl -w net.inet.ip.maxfragsperpacket=8192"
+echo "  sudo sysctl -w net.inet.udp.recvspace=8388608"
+echo "  sudo sysctl -w net.inet.udp.maxdgram=65535"
 echo ""
 echo "이제 실행하세요: bash start_sim.sh"
