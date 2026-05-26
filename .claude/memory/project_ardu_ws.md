@@ -8,14 +8,17 @@ macOS ARM (Apple Silicon) 에서 ArduPilot Copter SITL + Gazebo Harmonic + ROS2 
 
 **워크스페이스 경로:** `/Users/swjo/yonsei-ai/aerion/ardu_ws`
 
-**현재 상태 (2026-05-07):** 이 Mac en7(유선) 200.40, 저쪽 Ubuntu 200.38 (DHCP — 매일 변동). en0(Wi-Fi)는 200.39지만 DDS 금지.
+**현재 상태 (2026-05-26):** 이 Mac en7(유선) 10.130.200.35, 저쪽 Ubuntu 10.130.200.33. NetworkInterface=en7. 카메라 640x480, 짐벌 -20° NEUTRAL. 유선 RTT 0.97ms.
+- sync_and_build.sh 자동 IP 감지가 또 다른 인터페이스(.31)를 잡았음 — 결과적으로 메모리에 잘못 기록될 수 있으니 en7 실제 IP로 사후 보정. DDS 바인딩 자체는 en7로 강제됨.
+
+**집 환경 시도 이력 (2026-05-08):** en0(Wi-Fi) + 192.168.45.50/45.93 조합으로 띄움. SITL/Gazebo/MAVProxy는 정상 기동(EKF3 init, DDS init passed)했지만 실사용 시 양쪽 통신 안 됨. 원인 미확인 — Wi-Fi 라우터 broadcast 차단/AP isolation 의심. 추후 집에서 재시도하려면 NIC/방화벽/라우터 격리 설정 점검 필요.
 - stop_sim.sh: 1차 pkill → 2초 대기 → 2차 강제 kill(-9) + 포트 정리로 개선 (잔여 프로세스로 기체 미동작 문제 해결)
 - sync_and_build.sh: 완료 시 sysctl 리마인더 출력 추가. 자동 IP 감지가 en0(Wi-Fi)을 먼저 잡을 수 있으니 주의 — DDS 바인딩은 cyclonedds.xml의 en7로 강제됨
 - Gazebo Harmonic + RViz2 + ArduCopter SITL 정상 동작
-- MAVProxy → UDP out: 200.38:14555
+- MAVProxy → UDP out: 10.130.200.31:14555
 - RMW: rmw_cyclonedds_cpp
 - CycloneDDS 설정: `cyclonedds.xml` (en7 유선, FragmentSize 1344B)
-- `/camera/image` 1280x720 rgb8 크로스머신 전송 정상
+- `/camera/image` 640x480 rgb8 (2026-05-13 변경, 이전 1280x720) 크로스머신 전송 정상
 - World: `iris_runway_des.sdf` (기본, 저쪽 Ubuntu 절대경로 → model:// 수정 완료)
 - World 대안: `iris_runway_des_fire.sdf`, `iris_runway_remove_object.sdf`
 
@@ -65,7 +68,7 @@ bash sync_and_build.sh [저쪽IP]
 
 **수정 이력:**
 - `iris_runway_des.sdf` — 저쪽 Ubuntu 절대경로(`file:///home/clrobur/...`) → `model://` 수정 완료 (2026-04-14)
-- 카메라 해상도 1920x1080 → 1280x720 (2026-04-13)
+- 카메라 해상도 1920x1080 → 1280x720 (2026-04-13) → 640x480 (2026-05-13). 토글 위치: `src/ardupilot_gazebo/models/gimbal_small_3d/model.sdf` + `install/...gimbal_small_3d/model.sdf` 두 파일 모두 — install이 가제보가 실제 읽는 파일
 - CycloneDDS FragmentSize 1344B — IP fragmentation 제거 (2026-04-10)
 
 **GitHub:** https://github.com/swjo0330/Aerion-ardu-ws

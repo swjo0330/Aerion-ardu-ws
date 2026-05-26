@@ -123,11 +123,31 @@ PATH에 `Micro-XRCE-DDS-Gen/scripts` 필요 (`microxrceddsgen` 호출).
 4. 패킷 나감 + 저쪽 미수신 → IP fragmentation → `MaxMessageSize`/`FragmentSize` MTU 이하 확인
 5. Wi-Fi 사용 시 → 유선(en7) 강제
 
+## Distance Sensors (2026-05-22 추가)
+
+iris에 전/좌/우 single-ray gpu_lidar 3개 → ardupilot_gazebo Plugin RangeCb → SITL JSON `rng_1~3` → RNGFND1/2/3 (Type=100 SIM) → PRX1(RangeFinder) → AVOID. ros_gz_bridge로 `/range/{front,left,right}` (sensor_msgs/LaserScan) ROS2 노출.
+
+**토글:** `bash switch_rangefinders.sh on|off|status`
+6개 파일 일괄 swap (src+install 양쪽 sdf/parm/yaml). 각 파일별 `.baseline` / `.rangefinders` 영구 보관.
+
+**ON 시 주의:** parm 새로 로드시키려면 `eeprom.bin` 백업 후 삭제 권장 (백업: `eeprom.bin.before_rangefinders`). SITL이 eeprom 우선 → 새 RNGFND가 무시될 수 있음.
+
+**검증 명령:**
+- 플러그인 인식: `grep "subscribing to /range" /tmp/sim_start.log`
+- 파라미터 적용: `grep -E "^RNGFND[123]_TYPE\\b|^PRX1_TYPE\\b" mav.parm`
+- gz 측: `gz topic -e -t /range/front -n 1 | grep ranges:`
+- ROS2 측: `ros2 topic echo /range/front --once | grep -A 1 "^ranges:"`
+
+상세는 `.claude/memory/project_distance_sensors.md`.
+
 ## 남은 작업 (2026-05-07 기준)
 
 - Gazebo 마커/경로 표출 검토 (`gz transport /sensors/marker`)
 - Aerion-Foundation 서브모듈 등록 (저쪽 push 대기)
 - `iris_runway_des.sdf` src 파일도 `model://` 수정 (install만 수정됨)
+- Distance sensor 회피 동작 실비행 검증 (GUIDED 이륙 → 벽 접근 → AVOID_MARGIN=2m 정지)
+- 박스 spawn 검증 (`gz service /world/map/create`로 iris 정면에 박스 → /range/front 값 확인)
+- AVOID_ENABLE=7이 모드변경 지연 원인인지 격리 확인 (의심 후보)
 
 ---
 
