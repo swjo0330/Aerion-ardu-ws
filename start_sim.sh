@@ -29,6 +29,11 @@ export CYCLONEDDS_URI="file://${SCRIPT_DIR}/cyclonedds.xml"
 
 source "${SCRIPT_DIR}/install/setup.bash"
 
+# path_marker_node: /replan_path_enu (nav_msgs/Path, ENU) → Gazebo /marker LINE_STRIP (재계획 경로 표출)
+# 백그라운드 기동. /marker(gz sim)·/replan_path_enu(저쪽)가 아직 없어도 idle 대기, 데이터 오면 그림.
+ros2 run path_marker path_marker_node &
+echo "Launched path_marker_node (pid $!)"
+
 # Launch
 LAUNCH=${1:-iris_runway.launch.py}
 echo "Launching: $LAUNCH"

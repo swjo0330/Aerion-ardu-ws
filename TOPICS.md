@@ -1,10 +1,12 @@
 # ROS2 토픽 목록
 
-SITL Mac (.35) + 원격 PC (.33) CycloneDDS 연결 시 확인된 토픽 (2026-04-09)
+> **동기화 2026-07-09** (원 스냅샷 2026-04-09). IP는 DHCP 매일 변동 — 현재 Mac en7 유선, 저쪽 Ubuntu Peer(당일 확인). CycloneDDS(en7).
+> **범위**: 아래 §Mac 발행부 = **단일 모드**(`start_sim.sh`) 실측 반영본. **멀티 모드**(`start_multi_sim.sh`, SITL 3기·도메인 분리·`/drone{N}/` 네임스페이스)의 토픽·포트·수신 규격은 별도 정본 → [Docs/specs/2026-07-09-topic-interface-changes-for-remote.md](Docs/specs/2026-07-09-topic-interface-changes-for-remote.md).
+> **저쪽(원격) 발행부**는 2026-04-09 스냅샷 그대로 — 저쪽 미접속으로 재검증 못 함(§원격 PC 참고).
 
 ---
 
-## SITL Mac (.35) 발행 토픽
+## SITL Mac 발행 토픽 (단일 모드 — 2026-07-09 실측)
 
 ### ArduPilot DDS (micro_ros_agent)
 
@@ -44,6 +46,10 @@ SITL Mac (.35) + 원격 PC (.33) CycloneDDS 연결 시 확인된 토픽 (2026-04
 | `/joint_states` | `sensor_msgs/JointState` | 관절 상태 |
 | `/gz/tf` | `tf2_msgs/TFMessage` | Gazebo TF |
 | `/gz/tf_static` | `tf2_msgs/TFMessage` | Gazebo 정적 TF |
+| `/range/front/points` | `sensor_msgs/PointCloud2` | 전방 3D lidar (fan3d 계열, 저쪽 인지용) — **2026-05~06 추가** |
+| `/range/front_av` | `sensor_msgs/LaserScan` | 수평 회피센서(RNGFND1 입력값 확인용) — **2026-05~06 추가** |
+
+> 거리센서 변형(6종)에 따라 `/range/*` 구성이 달라짐 — 현 활성 변형은 `switch_rangefinders.sh status`로 확인. 상세: [Docs/RULES.md](Docs/RULES.md#distance-sensors).
 
 ### 기타 (robot_state_publisher, relay, rviz2)
 
@@ -55,7 +61,26 @@ SITL Mac (.35) + 원격 PC (.33) CycloneDDS 연결 시 확인된 토픽 (2026-04
 
 ---
 
-## 원격 PC (.33) 발행 토픽
+## 멀티 모드 토픽 (SITL 3기 — 요약, 정본은 규격서)
+
+`start_multi_sim.sh` 기동 시 위 단일 모드 토픽이 **도메인·네임스페이스로 분리**된다:
+
+| | 단일 모드 | 멀티 모드 |
+|---|---|---|
+| ROS 도메인 | 0 | 기체별 1 / 2 / 3 |
+| 상태·제어 `/ap/*` | domain 0 | 각 도메인에 자기 기체 것 (토픽명 동일) |
+| 센서 | `/imu`, `/camera/image` … | `/drone{N}/imu`, `/drone1/camera/image` … |
+| 카메라·`/range/*` | 있음 | **drone1(본기)만** — drone2·3(leaf)는 없음 |
+| MAVLink out | 14555 | 14555 / 14565 / 14575 |
+
+→ 전체 도메인별 인벤토리·실측 Hz·수신 설정: **[Docs/specs/2026-07-09-topic-interface-changes-for-remote.md](Docs/specs/2026-07-09-topic-interface-changes-for-remote.md)** (저쪽 전달용 정본)
+
+---
+
+## 원격 PC 발행 토픽 — ⚠️ 2026-04-09 스냅샷 (저쪽 미접속, 미검증)
+
+> 아래는 스냅샷 시점 값 — 저쪽 Ubuntu가 접속돼 있을 때 재확인 필요.
+> ⚠️ **`/mavros/*` 토픽은 Mac(이 워크스페이스)에서 정하지 않는다.** Mac은 MAVLink UDP 스트림(멀티 모드 포트 14555/14565/14575)만 제공하고, mavros 네임스페이스·토픽 리매핑은 **각 체화지능이 자기 규칙대로** 설정하는 영역이다(저쪽 관할). 멀티 모드에선 기체별 mavros 3개가 필요해지며 그 네이밍도 저쪽이 결정.
 
 ### MAVROS
 
@@ -103,8 +128,10 @@ SITL Mac (.35) + 원격 PC (.33) CycloneDDS 연결 시 확인된 토픽 (2026-04
 
 ## 전체 토픽 리스트
 
+> ⚠️ **2026-04-09 스냅샷** (Mac+저쪽 동시 접속 시). `/camera/image` 등 무네임스페이스 = 단일 모드. `/range/front/points`·`/range/front_av`는 이 스냅샷 이후 추가돼 아래 목록엔 없음. 저쪽 재접속 시 갱신 대상.
+
 <details>
-<summary>펼치기 (157개)</summary>
+<summary>펼치기 (157개, 2026-04-09 스냅샷)</summary>
 
 ```
 /a2a/drone1/decision

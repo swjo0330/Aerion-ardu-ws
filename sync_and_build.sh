@@ -10,9 +10,15 @@ LAUNCH_PY="${WORKSPACE}/src/ardupilot/Tools/ros2/ardupilot_sitl/src/ardupilot_si
 PYTHON=/Users/swjo/anaconda3/envs/ros_env/bin/python3
 
 # ------------------------------------
-# 1. 현재 Mac IP 자동 감지 (10.130.x.x 우선)
+# 1. 현재 Mac IP 자동 감지 (en7 유선 우선 — DDS가 en7 이름 바인딩이므로)
 # ------------------------------------
-MY_IP=$(ifconfig | grep "inet " | grep -v 127.0.0.1 | grep "10.130" | awk '{print $2}' | head -1)
+# en7 실제 IP를 직접 조회 (다른 NIC를 잘못 잡던 함정 제거)
+MY_IP=$(ipconfig getifaddr en7 2>/dev/null)
+
+if [ -z "$MY_IP" ]; then
+    # en7 미연결 시 폴백: 10.130.x.x 첫 매칭
+    MY_IP=$(ifconfig | grep "inet " | grep -v 127.0.0.1 | grep "10.130" | awk '{print $2}' | head -1)
+fi
 
 if [ -z "$MY_IP" ]; then
     MY_IP=$(ifconfig | grep "inet " | grep -v 127.0.0.1 | awk '{print $2}' | head -1)
