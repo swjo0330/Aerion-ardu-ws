@@ -58,23 +58,32 @@ colcon build --packages-select ardupilot_sitl --cmake-args \
 
 ## 환경 이동
 
-IP 대역으로 환경 판별: `10.130.200.x` = 랩/유선/**en7**, `192.168.x` = 집/Wi-Fi/**en0**.
+IP 대역으로 환경 판별: `10.130.200.x` = 랩/유선/**en7**, `192.168.x` = 집. **집 유선 NIC은 en5**(USB-C 이더넷 등), 집 Wi-Fi는 en0 — 장소마다 유선 NIC 이름이 다르다(랩 en7 ≠ 집 en5). 항상 `ipconfig getifaddr <nic>` + `ifconfig`로 실물 확인.
 
 **전환 절차 (랩↔집):**
-1. `ipconfig getifaddr en7`로 유선 연결 여부 실물 확인 (IP만으로 NIC 판단 금물 — DHCP로 같은 IP가 en0↔en7을 오간 실측 있음)
-2. `cyclonedds.xml`의 `<NetworkInterface name="..."/>`을 **수동 전환** (en7↔en0) — **`sync_and_build.sh`는 NetworkInterface를 처리하지 않는다** (Peer·launch.py만 처리)
+1. 유선 NIC 실물 확인: 랩=`ipconfig getifaddr en7`, 집=`ipconfig getifaddr en5` (IP만으로 NIC 판단 금물 — DHCP로 같은 IP가 NIC 사이를 오간 실측 있음)
+2. `cyclonedds.xml`의 `<NetworkInterface name="..."/>`을 **수동 전환** (en7/en5/en0) — **`sync_and_build.sh`는 NetworkInterface를 처리하지 않는다** (Peer·launch.py만 처리)
 3. `bash sync_and_build.sh [저쪽IP]` — 저쪽도 동일 네트워크 대역 IP여야 함
+
+**⚠️ multi-homing 경고 (2026-07-12 실측):** 집 유선을 꽂으면 **en0(Wi-Fi)과 유선 NIC이 같은 서브넷(예 45.x)에 IP를 동시에** 갖는 상황이 생긴다(en0=45.50 + en5=45.146). same-subnet multi-homing은 broadcast 중복·ARP flux·라우팅 비대칭으로 **간헐 마비**를 유발할 수 있다. CycloneDDS는 유선 NIC 이름 바인딩이라 DDS 경로는 맞지만 OS 라우팅은 별개. **유선 단독 운용이면 Wi-Fi를 끄는 게 깔끔**: `sudo ifconfig en0 down` (되돌리기 `sudo ifconfig en0 up`). 또는 둘 중 하나만 45망에 두기. "시뮬 돌리면 내부 Wi-Fi 전체가 죽는다" 증상의 1차 용의자.
+
+**raw 카메라 로컬 격리 (2026-07-12, 랩에서도 유지 확정 2026-07-13):** raw 카메라는 `camera/image_local`(로컬 전용)로 발행 — 표준 `/camera/image`는 발행자 0이라 크로스머신 raw(44Mbps) 물리 차단. 원격 카메라는 `/camera/image/compressed`(멀티: `/drone{N}/…`)가 유일 채널. 환경(집 Wi-Fi) 안전판이라 랩 유선에서도 유지(사용자 결정). 상세: `Docs/specs/2026-07-11-camera-compressed-republish.md`.
+- **RViz 카메라 표시**: `iris.rviz`의 Image display Topic = `/camera/image_local` (raw 격리 때문에 표준 `/camera/image`는 발행자 0 → no image였음). RViz Image display는 **raw(`sensor_msgs/Image`)만** 표시 — CompressedImage 불가, RViz는 로컬이라 raw_local이 정답(대역 무관). compressed 스트림 육안 확인은 `rqt_image_view /camera/image/compressed`.
 
 **sim 자동사망 신호 (2026-07-03 관측):** 랩(유선)에서 sim을 돌리다 집으로 이동/en7이 뽑히면, cyclonedds가 죽은 en7 IP에 묶여 로그가 다음으로 도배되며 launch가 자체 종료(exit 0)한다:
 - `Exception sending a multicast message: Can't assign requested address`
 - `ddsi_udp_conn_write to udp/[내IP]:74xx failed`
 - 이때 `path_marker_node`만 고아로 남는다. 대응: en7 실물 확인 → 미연결이면 NetworkInterface en0 전환 + 저쪽 동네트워크 IP 필요, 유선 복귀면 en7 유지 + `sync_and_build.sh [저쪽IP]` 후 `stop_sim.sh`→`start_sim.sh`.
 
-**Wi-Fi DDS 실패 이력 (en0을 기본 금지하는 근거):**
-- 2026-05-08 집 시도: en0 + 192.168.45.50/45.93 조합으로 SITL/Gazebo/MAVProxy는 정상 기동(EKF3 init, DDS init passed)했으나 **크로스머신 통신 불가**. 원인 미확인 — 라우터 broadcast 차단/AP isolation 의심.
-- 구조적 한계 (유선에서 잘 돌면 DDS 튜닝 문제가 아니라 매체 한계): AP가 멀티캐스트를 6-24Mbps basic rate로 강제 → 채널 점유 폭증 / Reliable QoS ACKNACK + 802.11 ARQ 이중 재전송 → self-DoS 발산 / Wi-Fi 드라이버 RX 큐 < fragment 도착 속도 → socket buffer overflow / macOS `kern.ipc.maxsockbuf` 8MB 천장 (16MB까지 상향 가능, 32MB는 "Result too large").
+**Wi-Fi DDS 이력 (실측 갱신 2026-07-10):**
+- ⚠️ **AP 의존성 결론 정정 (2026-07-11)**: 아래 "ipTIME 0%/38ms 완치" 판정은 **실험 결함** — 측정 시점에 원격 구독자가 없어 raw가 실제로 공중에 실리지 않았음 (DDS는 구독자 있어야 전송). 원격이 구독을 시작하자 ipTIME에서도 불안정 재현. **결론 원상복구: raw 480p(≈44Mbps)+RTPS 재전송은 소비자용 Wi-Fi AP 일반의 한계** — AP 교체가 아니라 **대역 축소(compressed republish)가 정공법**. 교훈: "스트림 가동 중" 측정은 반드시 **원격 구독자 존재를 확인**하고 해야 함 (로컬 발행≠공중 전송).
+- ~~🏆 AP 의존성 최종 확정 (2026-07-10, 차등실험 2단)~~ (상기 정정으로 무효)
+- (구 기록) 🏆 **AP 의존성 최종 확정 (2026-07-10, 차등실험 2단)**: 동일 맥·동일 raw 스트림에서 통신사 모뎀 AP=손실 45%/RTT 972ms(자기유발 혼잡 붕괴, 유휴 시 1%/21ms) ↔ **ipTIME AP=손실 0%/38ms**. 집에서 붕괴 시 의심 순서: ①양쪽 장소의존 설정(Peer IP·NIC 이름 실측) ②**AP 품질(모뎀 내장 AP 회피, ipTIME류 사용)** ③그 후에야 매체 한계 일반론. compressed 플러그인(ros-humble-compressed-image-transport)은 ros_env에 설치됨 — 대역 완화 필요시 republish 사용.
+- ✅ **2026-07-10 집(45망) 크로스머신 성공 (실측)**: 이 Mac en0 192.168.45.50 → 저쪽 맥북 192.168.45.93. 480p raw `/camera/image` **6.5Hz**·`/clock`·camera_info 15초 실측, 송신측 UDP full-buffer drop 증가 0. → **집 Wi-Fi는 raw 480p DDS 단편화 전송을 감당함** (랩 en7 기본 정책은 유지 — 대역·안정 마진).
+- 🔍 **2026-05-08 "통신 전무" 미제의 근본원인 (2026-07-10 규명)**: Wi-Fi/라우터가 아니라 **저쪽의 장소 의존 설정 2건** — ①CycloneDDS Peer가 사무실 IP로 stale ②XML 고정 NIC `en4`가 집에 없음 → **노드 생성 자체 사망**. AP isolation/broadcast 차단 의심은 오진. **교훈: 장소 이동 시 양쪽 모두 ①Peer IP ②NIC 이름을 실측으로 갱신** — 존재하지 않는 NIC 지정은 "통신 안 됨"이 아니라 "노드 자체가 안 뜸"으로 나타난다.
+- 구조적 한계 (일반론 — 여전히 유효, 단 위 실측처럼 저부하 480p·소수 노드에선 문제 안 될 수 있음): AP가 멀티캐스트를 6-24Mbps basic rate로 강제 → 채널 점유 폭증 / Reliable QoS ACKNACK + 802.11 ARQ 이중 재전송 → self-DoS 발산 / Wi-Fi 드라이버 RX 큐 < fragment 도착 속도 → socket buffer overflow / macOS `kern.ipc.maxsockbuf` 8MB 천장 (16MB까지 상향 가능, 32MB는 "Result too large").
 - 완화책 (효과 큰 순): ① image_transport compressed(JPEG q80, ros_gz_bridge는 미지원이라 별도 republisher 필요) ② 카메라 토픽 QoS BEST_EFFORT + KEEP_LAST(1) (송신측 `qos_overrides`) ③ 해상도/rate 축소 ④ zenoh-bridge-ros2dds로 Wi-Fi 구간만 TCP 분리 ⑤ `NackDelay 50ms`·`SocketReceiveBufferSize 10MB`·`AllowMulticast spdp`.
-- 2026-06-27 집/Wi-Fi 구성 기록 존재 (en0 192.168.35.158 / Peer 192.168.35.7) — 크로스머신 성공 여부는 **미확인**.
+- 2026-06-27 집/Wi-Fi 구성 기록 존재 (en0 192.168.35.158 / Peer 192.168.35.7, 35망) — 그 회차 크로스머신 성공 여부는 미확인 (45망은 상기 성공).
 
 ## Distance Sensors
 
@@ -125,6 +134,8 @@ ros2 topic echo /range/front --once | grep -A 1 "^ranges:"
 
 ## 트러블슈팅
 
+> 🔗 **재시작·연결·자원프리 IP 포함 known-good 샘플**: [setups/2026-07-14-known-good-crossmachine-wifi-sample.md](setups/2026-07-14-known-good-crossmachine-wifi-sample.md) — 연결 세팅 단계(파일/NIC/Peer/MAVProxy out)·자원프리 항목명·성능 실측 정본.
+
 **대형 토픽(카메라 등) 미수신 진단 순서 (재발 시 이 순서 고정):**
 
 1. `bash check_camera.sh [원격IP]` — 로컬 수신, 시스템 설정, 원격 전송 확인
@@ -144,6 +155,17 @@ ros2 topic echo /range/front --once | grep -A 1 "^ranges:"
 - 원인: `micro_ros_agent`(XRCE-DDS, Fast-DDS 내장)의 SHM transport 파일을 `stop_sim.sh`의 `pkill -9`(SIGKILL)가 정리 로직 없이 죽여 고아로 남김. 메인 RMW인 CycloneDDS는 이 파일과 무관 — fastrtps_*는 오직 micro_ros_agent 계열.
 - **해결: `stop_sim.sh`가 자동 정리** (2026-07-09 통합 — 전 프로세스 종료 후 `fastrtps_*` 제거, `Cleaned N orphaned ...` 출력). 수동 정리(sim 미실행 상태에서만): `rm -f /private/tmp/boost_interprocess/fastrtps_*`
 - 진단 신호: "재시작할 때마다 뭐가 남는 것 같다" → `ls /private/tmp/boost_interprocess/ | wc -l`
+
+**카메라 발행률 누적 저하 (장시간 구동 시):**
+- 증상: `/camera/image/compressed` 발행률이 시간이 갈수록 서서히 하락 (2026-07-13 실측: clean 재시작 직후 **10.08Hz**(update_rate 상한) → 장시간 켜둔 뒤 **2.2Hz**로 1/5 저하). **RTF는 100% 유지**(CPU·물리는 정상) — 순수 gz Sensors GPU 렌더 스레드의 누적 드리프트로 추정.
+- **핵심 감별**: 저쪽 수신 Hz가 낮을 때, 먼저 **시뮬측 `ros2 topic hz /camera/image/compressed`로 발행률 실측**. 발행이 이미 낮으면 네트워크·저쪽 문제가 아니라 이 누적 저하다 (Peer·QoS 만지기 전에 이것부터).
+- **해결: clean 재시작** — `stop_sim.sh` → `start_sim.sh`. gz server가 새로 뜨면 10Hz 회복. **실험 런 전에는 반드시 clean 재시작**이 정본(장시간 구동 상태에서 측정 금지).
+- 예방: `start_sim.sh`가 기존 sim 감지 시 자동으로 `stop_sim.sh` 선행(2026-07-13 통합 — clean 시작 보증). `stop_sim.sh`는 종료 후 `[자원 프리 검증: 프로세스 0 · 포트 0 · SHM 0]` 리포트 출력.
+
+**재시작 절차 (정본 — 자원 프리·누적 제거 통합, 2026-07-13):**
+1. `bash stop_sim.sh` — 2단 pkill(11종+`_ros2_daemon`) → 포트 정리(단일·멀티 오프셋 5760/70/80·2019/29/39·14555/65/75) → Fast-DDS SHM(`fastrtps_*`) 제거 → **자원 프리 자체검증 리포트**
+2. `bash start_sim.sh` — 기존 sim 잔재 감지 시 stop_sim 자동 선행(clean 보증), 이후 기동. `NO_CLEAN=1`로 선행 생략 가능.
+3. 기동 성공 = `DDS: Initialization passed` + `EKF3 active` + (compressed) `image_republisher` 기동 로그.
 
 ## CycloneDDS 상세
 
