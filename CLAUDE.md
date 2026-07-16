@@ -78,6 +78,7 @@
 - 로컬 `ros2 topic` 미표시/멈춤 = 묵은 ros2 daemon 캐시 의심 → `--no-daemon` + pkill (외부는 동작하는데 로컬만 안 보이면 도구부터 의심)
 - 센서 변형(rangefinder 6종)·월드 전환·검증 명령: [Docs/RULES.md](Docs/RULES.md#distance-sensors) — 현 활성 변형은 `switch_rangefinders.sh status`로 실물 확인
 - 대형 토픽(카메라) 미수신 진단 순서: [Docs/RULES.md](Docs/RULES.md#트러블슈팅)
+- **드론이 느리게 움직임 = RTF 저하 (펌웨어 아님)**: RTF는 시간 배율 — 낮으면 벽시계 기준 느리게 재생(제어·물리는 정상). **원인 1위 = 카메라 `<update_rate>`** (clean A/B: 10→RTF 0.47, 30→0.20). **update_rate 10 유지**(`gimbal_small_3d/model.sdf`, src+install 양 트리). 배터리·발열·압축·물리설정 무죄. 상세: [Docs/RULES.md](Docs/RULES.md#트러블슈팅) "드론이 느리게 움직임"
 
 ## 6. 멀티 SITL (3인스턴스 — 진행 중 트랙)
 

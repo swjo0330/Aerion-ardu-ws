@@ -6,6 +6,8 @@ originSessionId: e13f8d67-cbbb-491e-8553-db77f490f788
 ---
 Wi-Fi에서 RTPS 기반 DDS(Cyclone/Fast/Connext)는 구조적으로 발산 경향. 유선에서 잘 돌면 DDS 튜닝 문제 아니고 매체 한계.
 
+**⚠️ 실측 반례 (2026-07-10, 과잉일반화 주의):** 집 Wi-Fi(45망) Mac↔Mac에서 480p raw 카메라 6.5Hz + /clock 크로스머신 **정상 전송 실측** (손실 0, 송신 drop 0 — [[project_ardu_ws]] 집 환경 절). 저부하(≈5.5MB/s)·소수 노드·유니캐스트 Peer 구성에선 Wi-Fi도 충분할 수 있다. 이 문서의 구조 한계는 고부하·다노드·멀티캐스트 상황의 위험이지 "Wi-Fi=무조건 실패"가 아님. **"Wi-Fi에서 안 됨"을 보면 매체 탓 전에 장소 의존 설정(Peer IP stale, 부재 NIC 지정→노드 사망)부터 실측 확인** — 2026-05-08 미제가 그 오진이었음.
+
 **증상이 원래 그런 이유:**
 - AP가 멀티캐스트를 6-24Mbps basic rate로 강제 → 채널 점유 폭증
 - Reliable QoS ACKNACK + 802.11 ARQ 이중 재전송 → self-DoS 발산

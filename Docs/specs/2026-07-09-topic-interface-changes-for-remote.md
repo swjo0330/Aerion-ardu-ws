@@ -13,7 +13,7 @@
 | ROS 도메인 | 0 (전부) | **기체별 분리: drone1=1, drone2=2, drone3=3** |
 | `/ap/*` (펌웨어 상태·제어) | domain 0에 1세트 | **각 도메인에 자기 기체 것만 1세트** (토픽명 동일 — 이름은 펌웨어 고정이라 도메인이 유일한 분리축) |
 | 센서 토픽 | 무네임스페이스 (`/camera/image` 등) | **`/drone{N}/` 네임스페이스** (`/drone1/camera/image` 등) |
-| 카메라 | `/camera/image` 1개 | **`/drone1/camera/image` — 본기(d1)만** (스펙 동일 유지: 640x480 rgb8). d2/d3는 카메라 센서 없음 |
+| 카메라 | `/camera/image` 1개 | **3기 전부** `/drone{N}/camera/image` + **`/drone{N}/camera/image/compressed`** (D10 개정 2026-07-11, 640x480 rgb8). **원격 소비는 도메인별 compressed 독립 채널** — raw 원격 구독 금지 |
 | 인지(3D) | `/range/front/points` | **`/drone1/range/front/points` — 본기(d1)만**. d2/d3는 인지 토픽 없음 (leaf) |
 | MAVLink 수신 포트 | UDP 14555 | **drone1=14555 / drone2=14565 / drone3=14575** |
 | MAV SYSID | 1 | **drone1=1 / drone2=2 / drone3=3** |
@@ -37,8 +37,9 @@
 
 | 단일 | 멀티 | 타입 | 존재 기체 |
 |---|---|---|---|
-| `/camera/image` | `/drone{N}/camera/image` | `sensor_msgs/Image` | **d1만** (640x480 rgb8) |
-| `/camera/camera_info` | `/drone{N}/camera/camera_info` | `sensor_msgs/CameraInfo` | **d1만** |
+| `/camera/image_local` (raw, 2026-07-12 격리) | `/drone{N}/camera/image_local` | `sensor_msgs/Image` | **d1·d2·d3** (640x480 rgb8) — 🔒 **로컬 전용 이름**. 표준 `/camera/image`는 발행자 0(크로스머신 raw 물리 차단). republisher만 구독 |
+| `/camera/image/compressed` | `/drone{N}/camera/image/compressed` | `sensor_msgs/CompressedImage` | **d1·d2·d3 — 유일한 원격 카메라 채널**. 도메인별 독립, ~29KB/frame. 실측 d1 4.5·d2 4.6·d3 4.6Hz(wall)·합 ≈390KB/s·오염0. raw는 로컬 격리라 이제 이게 원격 카메라의 전부 |
+| `/camera/camera_info` | `/drone{N}/camera/camera_info` | `sensor_msgs/CameraInfo` | **d1·d2·d3** |
 | `/range/front/points` | `/drone{N}/range/front/points` | `sensor_msgs/PointCloud2` | **d1만** |
 | `/range/front_av` | `/drone{N}/range/front_av` | `sensor_msgs/LaserScan` | **d1만** — ⚠️ **지능측 소비 없음(휴면 폴백)**: 저쪽은 `RANGE_3D_ENABLED=true` 운용이라 2D LaserScan 폴백은 미사용(2026-07-09 저쪽 확인) |
 | `/imu` | `/drone{N}/imu` | `sensor_msgs/Imu` | d1·d2·d3 |
@@ -76,7 +77,8 @@
 ```
 /ap/*                       ← 17종 전부 (pose/twist/geopose/navsat/battery/status/clock/time/
                                imu/airspeed/gps_global_origin + 구독: cmd_vel/cmd_gps_pose/goal_lla/joy)
-/drone1/camera/image        ← sensor_msgs/Image, 640x480 rgb8 (기존 스펙 유지)
+/drone1/camera/image_local  ← raw, 로컬 전용(표준 /camera/image는 발행자 0 — 크로스머신 raw 차단)
+/drone1/camera/image/compressed ← sensor_msgs/CompressedImage (원격 소비 정본, ~29KB/frame)
 /drone1/camera/camera_info
 /drone1/range/front/points  ← sensor_msgs/PointCloud2 (fan3d 3D 인지 — 기존 /range/front/points)
 /drone1/range/front_av      ← sensor_msgs/LaserScan (RNGFND 값 확인용)
@@ -90,11 +92,14 @@
 
 ```
 /ap/*                       ← 17종 전부 (자기 기체 것만)
+/drone{2,3}/camera/image            ← 도메인 내 로컬 전용 (원격 구독 금지)
+/drone{2,3}/camera/image/compressed ← 원격 소비 정본 (D10 개정 2026-07-11)
+/drone{2,3}/camera/camera_info
 /drone{2,3}/{imu,odometry,battery,navsat,air_pressure,magnetometer,joint_states}
 /drone{2,3}/{tf,gz/tf,robot_description}
 /clock
 ```
-- **카메라·range 없음** (leaf는 vision/인지 파이프라인 없음 — S-5 설계 확정. leaf 기체 장애물은 상태 이상으로만 감독에 잡힘. 본기 장애물 조우 시나리오는 본기 카메라 시야에서 발생시킬 것)
+- **카메라 있음(3기 전부·D10 개정 2026-07-11)** — 원격 전송은 compressed 전용. **인지(range)는 여전히 없음**(leaf vision 파이프라인 없음 — S-5 설계. leaf 장애물은 상태 이상으로만 감독에 잡힘. 본기 장애물 조우 시나리오는 본기 카메라 시야 권장이나, 이제 leaf 카메라 영상도 확보됨)
 
 ### MAVLink (mavros용)
 
@@ -125,7 +130,10 @@ ROS_DOMAIN_ID=2 ros2 topic list --no-daemon | grep -E "^/(ap|drone2)"
 ROS_DOMAIN_ID=3 ros2 topic list --no-daemon | grep -E "^/(ap|drone3)"
 # 실데이터 판정 (list는 /ap 열거 플레이크 있음 — echo가 판정 기준)
 ROS_DOMAIN_ID=2 ros2 topic echo /ap/time --once
-ROS_DOMAIN_ID=1 ros2 topic hz /drone1/camera/image
+# 카메라는 도메인별 compressed 독립 채널 (raw 구독 금지!)
+ROS_DOMAIN_ID=1 ros2 topic hz /drone1/camera/image/compressed
+ROS_DOMAIN_ID=2 ros2 topic hz /drone2/camera/image/compressed
+ROS_DOMAIN_ID=3 ros2 topic hz /drone3/camera/image/compressed
 ```
 
 ## 5. 단일 모드 병행 (불변)
@@ -134,38 +142,39 @@ Mac이 `start_sim.sh`(단일)로 띄우면 **기존 규격 그대로**: domain 0
 
 ## 6. 실측 토픽 인벤토리 (2026-07-09, 3기 동시 기동 · `ros2 topic list --no-daemon` 실측)
 
-### domain 1 — drone1 (본기) : 총 /ap 17 + /drone1 15 + /clock + /replan_path_enu
+### domain 1 — drone1 (본기) : 총 /ap 17 + /drone1 16 + /clock + /replan_path_enu (2026-07-09 실측 15 + compressed 신설 +1 [계산] — 재실측은 T4)
 
 ```
 /ap/airspeed  /ap/battery  /ap/clock  /ap/geopose/filtered  /ap/gps_global_origin/filtered
 /ap/imu/experimental/data  /ap/navsat  /ap/pose/filtered  /ap/status  /ap/tf  /ap/tf_static
 /ap/time  /ap/twist/filtered                                   ← 발행(펌웨어 상태)
 /ap/cmd_vel  /ap/cmd_gps_pose  /ap/goal_lla  /ap/joy           ← 구독(제어 입력)
-/drone1/camera/image  /drone1/camera/camera_info               ← 본기만 (640x480 rgb8)
-/drone1/range/front/points (PointCloud2)  /drone1/range/front_av (LaserScan)  ← 본기만
+/drone1/camera/image (도메인 내 로컬 전용, 640x480 rgb8)  /drone1/camera/image/compressed (원격 소비 — 신설 2026-07-11)  /drone1/camera/camera_info
+/drone1/range/front/points (PointCloud2)  /drone1/range/front_av (LaserScan)  ← 인지(range)는 d1만
 /drone1/imu  /drone1/odometry  /drone1/battery  /drone1/navsat
 /drone1/air_pressure  /drone1/magnetometer  /drone1/joint_states
 /drone1/tf  /drone1/gz/tf  /drone1/gz/tf_static  /drone1/robot_description
 /clock  /replan_path_enu(저쪽→Mac)
 ```
 
-### domain 2·3 — drone2·drone3 (leaf) : 총 /ap 17 + /drone{N} 11 + /clock
+### domain 2·3 — drone2·drone3 (leaf) : 총 /ap 17 + /drone{N} 14 + /clock
 
 ```
 /ap/* (17종 — domain 1과 동일 구성, 자기 기체 것)
+/drone{N}/camera/image (도메인 내 로컬 전용)  /drone{N}/camera/image/compressed (원격 소비)  /drone{N}/camera/camera_info
 /drone{N}/imu  /drone{N}/odometry  /drone{N}/battery  /drone{N}/navsat
 /drone{N}/air_pressure  /drone{N}/magnetometer  /drone{N}/joint_states
 /drone{N}/tf  /drone{N}/gz/tf  /drone{N}/gz/tf_static  /drone{N}/robot_description
 /clock
 ```
-→ **카메라·range 없음** (leaf, D10). drone1(15) − drone{2,3}(11) = camera 2 + range 2.
+→ **카메라 있음·인지(range) 없음** (D10 개정 2026-07-11 — 카메라 3기 전부 복원, 원격 전송은 compressed 전용. range/인지는 여전히 d1만).
 
 ### 실측 발행 주기 (3기 동시, RTF≈16~40% 상태 — **wall-clock 기준. sim-time 환산 시 ÷RTF**)
 
 | 토픽 | 실측 Hz (wall) | 비고 |
 |---|---|---|
-| `/drone1/camera/image` | ~1.6 | 본기만. sim-time 환산 시 ~10Hz(SDF update_rate) 근방 |
-| `/drone1/range/front/points` | ~3.0 | 본기만 |
+| `/drone1/camera/image` | ~1.6 | 본기 실측치(2026-07-09, D10 개정 전 — 현재는 3기 전부 카메라, d2/d3·compressed는 T4 재실측). sim-time 환산 시 ~10Hz(SDF update_rate) 근방 |
+| `/drone1/range/front/points` | ~3.0 | d1만 (인지는 D10 개정 후에도 d1만) |
 | `/ap/pose/filtered` | ~4.6 | 상태 추정 |
 | `/drone{N}/imu` | ~195 | 고빈도 — 대역 주의 |
 | `/ap/navsat` | ~0.9 | GPS |
@@ -174,10 +183,15 @@ Mac이 `start_sim.sh`(단일)로 띄우면 **기존 규격 그대로**: domain 0
 
 ## 7. 스폰 대형·GPS 이격 (확정 — 2026-07-09 실측)
 
-- **홈 간격 확정값**: home GPS는 **셋 다 공유**(`37.39447652, 126.6381927`), 물리·GPS 이격은 **gz 스폰 북(+Y) 선형 30m·i**(`SPAWN_NORTH_M={0,30,60}`)로 생성. 저쪽 env 슬롯 흡수값 = **30m 간격, 북 {0,30,60}**.
-- **GPS 실측 (요청 검증)**: 3기 기동 후 도메인별 `/ap/navsat` 위도 실측 —
-  `d1=37.39447784` · `d2=37.39474487`(**+30m**) · `d3=37.39501953`(**+60m**). 소비스 간격 30m·총 60m, 모든 쌍 >10m → 규칙 #11(`SWARM_SAFETY_RADIUS_M=10`) 오탐 없음. **gz 물리 오프셋이 GPS navsat에 정상 반영됨**(우려 케이스 배제 완료).
-  - ⚠️ 구현 노트: `navsat = home + gz_pos`이므로 **home은 오프셋하지 않는다**(gz 30m만). home도 함께 밀면 이중계산(60m 간격)됨 — 초기 시행착오에서 실측 확인.
+- **대형 확정: 20m 등변 삼각형** (지능측 .29 결정 + 시뮬측 배치 2026-07-09). 안전반경 10m 불변, 대형으로 규칙 #11 해결 — 정상 편대 20m>10m라 오탐 0, <10m 진입 시에만 발화(조기 수렴 감지 여유 10m 보존). d1(본기)=**출발지 고정**, d2·d3=좌우로 벌리며 후방(남). home GPS는 **셋 다 공유**(`37.39447652, 126.6381927`), 이격은 **gz 스폰 오프셋**(gz ENU: 동=x, 북=y)으로만:
+  | 기체 | gz 오프셋 (동 E, 북 N) | 실측 GPS (lat, lon) |
+  |---|---|---|
+  | d1 (정점/출발지) | (0, 0) | `37.3944778, 126.6381989` |
+  | d2 (좌후/남서) | (**−10 m**, **−17.32 m**) | `37.3943253, 126.6380844` |
+  | d3 (우후/남동) | (**+10 m**, **−17.32 m**) | `37.3943214, 126.6383133` |
+- **GPS 실측 (요청 검증)**: 도메인별 `/ap/navsat` 실측 쌍간 거리 — **d1↔d2 ≈19.8m · d1↔d3 ≈20.1m · d2↔d3 ≈20.2m** (≈20m 등변). **전 쌍 >10m → 규칙 #11(`SWARM_SAFETY_RADIUS_M=10`) 오탐 없음**(기준선 확보). gz 물리 오프셋이 navsat lat·lon 정상 반영 확인.
+  - ⚠️ 구현 노트: `navsat = home + gz_pos`이므로 **home은 오프셋하지 않는다**(gz만). home 동반 오프셋 시 이중계산.
+  - 참고: 정점 방향·정확 오프셋은 시뮬 관할(저쪽 위임) — 쌍간 ≈20m·전 쌍 >10m 충족. 대형 스칼라만 합의하면 즉시 조정 가능.
 - **RTF**: 3기 동시 ≈ 16~40%(부하 변동) → sim time이 wall보다 느림. 레이트/타임아웃은 **sim time(`/clock`) 기준** 권장.
 - **방화벽**: 도메인별 DDS 디스커버리 포트가 표준 오프셋 `7400+250×d`(d∈{1,2,3})로 이동 → **7650 / 7900 / 8150** 대역 개방 필요 (domain 3 = 8150 포함).
 - **진단**: `ros2 topic list`가 `/ap/*`를 도메인별로 가끔 누락(디스커버리 플레이크) — **판정은 `ros2 topic echo`/`hz` 실데이터 기준** (list 0개여도 echo는 정상인 사례 실측).

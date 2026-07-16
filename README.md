@@ -110,45 +110,53 @@ bash stop_sim.sh                # 종료
 
 ## 네트워크 설정
 
+> **IP·인터페이스 주의**: 아래 IP(`10.130.200.x`)는 **예시**이며 DHCP로 매일 바뀝니다 — 실제 값은 `ipconfig getifaddr en7`(내 유선)·저쪽 확인 후 넣으세요. 이 Mac은 **en7(유선) 필수**(Wi-Fi en0는 DDS 금지). 상세: [CLAUDE.md](CLAUDE.md) §4 · [Docs/RULES.md](Docs/RULES.md).
+
 ### MAVLink UDP out
 
-`sync_and_build.sh`로 대상 IP 변경 및 재빌드:
+`sync_and_build.sh`로 대상 IP 변경 및 재빌드 (저쪽 IP는 예시):
 
 ```bash
-bash sync_and_build.sh 10.130.200.33
+bash sync_and_build.sh <저쪽IP>     # 예: 10.130.200.29
 ```
 
 ### 크로스머신 ROS2 토픽 공유 (CycloneDDS 유니캐스트)
 
 이 Mac과 원격 PC 간 CycloneDDS 유니캐스트 피어 방식으로 토픽을 공유합니다.
 
-**이 Mac (SITL PC, .35) — `start_sim.sh`에 자동 적용:**
+**이 Mac (SITL PC) — `start_sim.sh`에 자동 적용 (`cyclonedds.xml`):**
 
 ```xml
 <CycloneDDS><Domain>
   <General>
-    <Interfaces><NetworkInterface name="en0"/></Interfaces>
+    <Interfaces><NetworkInterface name="en7"/></Interfaces>   <!-- 유선 필수 -->
+    <MaxMessageSize>1400B</MaxMessageSize>
+    <FragmentSize>1344B</FragmentSize>                          <!-- 카메라 IP fragmentation 회피 -->
   </General>
   <Discovery>
-    <Peers><Peer address="10.130.200.33"/></Peers>
+    <Peers><Peer address="&lt;저쪽IP&gt;"/></Peers>
   </Discovery>
 </Domain></CycloneDDS>
 ```
 
 - 멀티캐스트 유지 (로컬 노드 discovery 정상) + 원격 피어 추가
 
-**원격 PC (.33) — 해당 터미널에서 export:**
+**원격 PC — 해당 터미널에서 export (Peer=이 Mac en7 IP):**
 
 ```bash
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-export CYCLONEDDS_URI='<CycloneDDS><Domain><General><AllowMulticast>false</AllowMulticast></General><Discovery><Peers><Peer address="10.130.200.35"/></Peers></Discovery></Domain></CycloneDDS>'
+export CYCLONEDDS_URI='<CycloneDDS><Domain><Discovery><Peers><Peer address="<이Mac_en7_IP>"/></Peers></Discovery></Domain></CycloneDDS>'
 ```
 
 > **주의**: 이 Mac에서 `AllowMulticast=false`를 설정하면 로컬 노드끼리 discovery 실패합니다. 절대 추가하지 마세요.
 
+### 멀티 SITL (3기 + DDS 도메인 분리)
+
+한 Gazebo 월드에 SITL 3기를 도메인 분리로 띄우는 멀티 모드 지원 — `bash gen_multi_assets.sh`(1회 자산 생성) → `bash start_multi_sim.sh 3`. 도메인·토픽·스폰 대형·수신 규격 정본: [Docs/specs/2026-07-09-topic-interface-changes-for-remote.md](Docs/specs/2026-07-09-topic-interface-changes-for-remote.md).
+
 ### 토픽 목록
 
-전체 토픽 목록은 [TOPICS.md](TOPICS.md) 참고
+전체 토픽 목록은 [TOPICS.md](TOPICS.md) 참고 (멀티 모드 네임스페이스·도메인은 위 규격서)
 
 ---
 

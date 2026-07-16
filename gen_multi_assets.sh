@@ -41,34 +41,7 @@ gen_model() {
         sed -i '' "s|/range/front_av|/drone${N}/range/front_av|g" "$SDF"
         sed -i '' "s|<topic>/range/front</topic>|<topic>/drone${N}/range/front</topic>|" "$SDF"
         [ -f "${DST_DIR}/model.config" ] && sed -i '' "s|<name>Iris with Gimbal</name>|<name>Iris with Gimbal d${N}</name>|" "${DST_DIR}/model.config"
-        # leaf 기체(d2/d3): 카메라 없는 짐벌 사본(gimbal_small_3d_nocam) 참조로 전환
-        # — 카메라·YOLO는 본기(d1) 1대만 정본 (사용자 확정 2026-07-09: S-5 집단감독은 NATS
-        #   상태 스트림 기반, leaf는 vision 파이프라인 없음. 3대 영상은 1400B 단편화 대역폭상
-        #   비현실적 + GPU 렌더 부하 → RTF 개선). 카메라 센서는 gimbal_small_3d 하위 모델에 있음.
-        if [ "$N" -ge 2 ]; then
-            sed -i '' "s|models/gimbal_small_3d<|models/gimbal_small_3d_nocam<|" "$SDF"
-            echo "  gimbal → gimbal_small_3d_nocam 참조 전환: $SDF"
-        fi
         echo "A1 모델: $DST_DIR (fdm ${FDM})"
-    done
-}
-
-# ---------- A1b: 무카메라 짐벌 사본 (leaf 기체 d2/d3 공용) ----------
-gen_gimbal_nocam() {
-    for BASE in "${GZ_INSTALL}/models" "${GZ_SRC}/models"; do
-        local SRC_DIR="${BASE}/gimbal_small_3d" DST_DIR="${BASE}/gimbal_small_3d_nocam"
-        [ -d "$SRC_DIR" ] || { echo "skip(원본 없음): $SRC_DIR"; continue; }
-        rm -rf "$DST_DIR"; cp -R "$SRC_DIR" "$DST_DIR"
-        python3 - "${DST_DIR}/model.sdf" <<'PYCAM'
-import re, sys
-p = sys.argv[1]
-with open(p) as f: t = f.read()
-out, n = re.subn(r'\n[ \t]*<sensor name="camera"[^>]*>.*?</sensor>', '', t, flags=re.S)
-open(p, "w").write(out)
-print(f"  camera 센서 {n}개 제거: {p}")
-PYCAM
-        [ -f "${DST_DIR}/model.config" ] && sed -i '' "s|<name>\(.*\)</name>|<name>\1 nocam</name>|" "${DST_DIR}/model.config"
-        echo "A1b 무카메라 짐벌: $DST_DIR"
     done
 }
 
@@ -82,12 +55,11 @@ with open(src) as f: txt = f.read()
 m = re.search(r"( *)<include>\s*<uri>model://iris_with_gimbal</uri>\s*<name>iris</name>\s*<pose>([^<]+)</pose>\s*</include>\n", txt)
 assert m, "iris include 블록을 찾지 못함 — 월드 형식 변경됨?"
 indent, pose = m.group(1), m.group(2).split()
-# D9 최종 (지능측 .29 요청 채택 2026-07-09, GPS 실측 확정): 북(+Y) 선형 30m 간격 SPAWN_NORTH_M={0,30,60}.
-# ★ gz 물리 스폰 오프셋만 준다 — home GPS는 공유(drone_multi.launch.py). ArduPilotPlugin이 gz 절대
-#   위치를 SITL에 전달하므로 navsat = home + gz_pos → gz 30m 스폰만으로 GPS 30m 간격 성립(실측 확인).
-#   home도 오프셋하면 이중계산(60m)되니 금지. → 규칙 #11 오탐 방지 + 하니스 SPAWN_NORTH_M 정합.
-SPAWN_NORTH_M = 30.0
-OFFSET = {1: (0.0, 0.0), 2: (0.0, SPAWN_NORTH_M), 3: (0.0, 2 * SPAWN_NORTH_M)}   # (dx, dy) — 북 선형
+# 20m 등변 삼각형 (지능측 .29 결정 2026-07-09 확정): 안전반경 10m 불변, 대형으로 규칙 #11 해결.
+# d1(본기)은 출발지(0,0) 고정, d2·d3만 좌우로 벌리며 뒤로(남 −17.32m=−10√3, ±10m) → d1이 정점.
+# 쌍간 ≈20m 등변(d1↔d2=d1↔d3=√(10²+17.32²)=20, d2↔d3=20) → 정상 편대 오탐 0,
+# <10m 진입 시에만 #11 발화(조기 수렴 감지 여유 10m 보존). home GPS 공유(drone_multi.launch.py).
+OFFSET = {1: (0.0, 0.0), 2: (-10.0, -17.32), 3: (10.0, -17.32)}   # (dx=동/우, dy=북/전) — d1 고정·20m 등변
 blocks = []
 for n in (1, 2, 3):
     dx, dy = OFFSET[n]
@@ -113,15 +85,16 @@ gen_bridge() {
             -e "s|gz_topic_name: \"/range/|gz_topic_name: \"/drone${N}/range/|g" \
             -e "s|ros_topic_name: \"clock\"|ros_topic_name: \"/clock\"|" \
             "$SRC_Y" > "$DST_Y"
-        # leaf 기체(d2/d3): 카메라·인지(range) 브리지 제거 — 저쪽 leaf 인스턴스는 vision/인지 없음
+        # leaf 기체(d2/d3): 인지(range) 브리지만 제거 — 카메라 브리지는 보존
+        # (D10 개정 2026-07-11 — 카메라 3대 복원·전송은 compressed 전용, 인지(range)는 d1만 유지)
         if [ "$N" -ge 2 ]; then
             python3 - "$DST_Y" <<'PYBR'
 import re, sys
 p = sys.argv[1]
 with open(p) as f: t = f.read()
-out, n = re.subn(r'- ros_topic_name: "[^"]*(camera|range)[^"]*"\n(?:  .*\n?)*', '', t)
+out, n = re.subn(r'- ros_topic_name: "[^"]*range[^"]*"\n(?:  .*\n?)*', '', t)
 open(p, "w").write(out)
-print(f"  camera/range 브리지 {n}개 제거: {p}")
+print(f"  range 브리지 {n}개 제거: {p}")
 PYBR
         fi
         echo "A3 브리지: $DST_Y"
@@ -157,7 +130,6 @@ sync_launch() {
     echo "launch 배포: multi_src/launch → src·install 두 트리"
 }
 
-gen_gimbal_nocam
 for N in 1 2 3; do gen_model "$N"; gen_bridge "$N"; gen_parm "$N"; done
 export WORLD_SRC_DIR="$WORLD_SRC"
 gen_world

@@ -129,7 +129,7 @@ def setup(context, *args, **kwargs):
         respawn=False,
     )
 
-    return [
+    actions = [
         sitl_dds,
         robot_state_publisher,
         bridge,
@@ -137,6 +137,26 @@ def setup(context, *args, **kwargs):
             OnProcessStart(target_action=bridge, on_start=[topic_tools_tf])
         ),
     ]
+
+    # 카메라 compressed 재발행 — 3기 전부 (D10 개정: 도메인별 독립 compressed 채널).
+    # Wi-Fi/대역 절약: raw는 로컬 소비, 원격엔 JPEG(~1/20)만. domain은 호출 셸 ROS_DOMAIN_ID 상속.
+    # (설계 정본: Docs/specs/2026-07-11-camera-compressed-republish.md)
+    actions.append(
+        Node(
+            package="image_transport",
+            executable="republish",
+            name="image_republisher",
+            namespace=ns,
+            arguments=["raw", "compressed"],
+            remappings=[
+                ("in", f"/{ns}/camera/image_local"),   # raw 로컬 전용 — 크로스머신엔 compressed만
+                ("out/compressed", f"/{ns}/camera/image/compressed"),
+            ],
+            output="screen",
+        )
+    )
+
+    return actions
 
 
 def generate_launch_description():

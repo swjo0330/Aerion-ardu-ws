@@ -162,6 +162,13 @@ ros2 topic echo /range/front --once | grep -A 1 "^ranges:"
 - **해결: clean 재시작** — `stop_sim.sh` → `start_sim.sh`. gz server가 새로 뜨면 10Hz 회복. **실험 런 전에는 반드시 clean 재시작**이 정본(장시간 구동 상태에서 측정 금지).
 - 예방: `start_sim.sh`가 기존 sim 감지 시 자동으로 `stop_sim.sh` 선행(2026-07-13 통합 — clean 시작 보증). `stop_sim.sh`는 종료 후 `[자원 프리 검증: 프로세스 0 · 포트 0 · SHM 0]` 리포트 출력.
 
+**드론이 느리게 움직임 = RTF 저하 = 카메라 update_rate (2026-07-15 clean A/B 확정):**
+- 증상: 드론 이동·펌웨어 동작이 벽시계 기준 느림. **RTF는 시간 배율** — RTF 0.5면 실제 시간 절반 속도로 재생됨(제어·물리는 sim-time 기준 정상, 펌웨어 문제 아님).
+- **원인 1위 = 카메라 `<update_rate>`**. 깨끗한 15초 실효 RTF A/B: **rate 10 → RTF 0.47~0.50, rate 30 → RTF 0.20** (2.5배 차). gz 한 프로세스 안에서 카메라 렌더가 물리 스텝핑 시간을 잠식. **update_rate는 10 유지**(주말 30 변경이 RTF 반토막의 주범이었음, 원복 확정). 위치: `gimbal_small_3d/model.sdf` `<update_rate>` (src+install 양 트리, sed 토글).
+- 무죄(실측): 배터리·발열·저전력(AC·미스로틀), compressed(2.3Mbps), 물리설정(1ms/1000Hz/lock_step1), 토픽명 변경. 호스트 앱 경합은 부차적(같은 노트북 집에서도 RTF 0.56~0.93 변동 — 이 sim의 상시 특성).
+- 추가 레버(더 올리려면): 카메라 해상도 640×480→320×240(렌더 1/4, 저쪽 전달 화질만↓). RViz·무거운 앱 종료도 소폭 기여.
+- ⚠️ 위 "누적 저하(RTF 100% 유지)"와는 **다른 현상** — 이건 update_rate가 RTF 자체를 깎는 것(렌더 부하), 누적 저하는 RTF 정상인데 Hz만 드리프트.
+
 **재시작 절차 (정본 — 자원 프리·누적 제거 통합, 2026-07-13):**
 1. `bash stop_sim.sh` — 2단 pkill(11종+`_ros2_daemon`) → 포트 정리(단일·멀티 오프셋 5760/70/80·2019/29/39·14555/65/75) → Fast-DDS SHM(`fastrtps_*`) 제거 → **자원 프리 자체검증 리포트**
 2. `bash start_sim.sh` — 기존 sim 잔재 감지 시 stop_sim 자동 선행(clean 보증), 이후 기동. `NO_CLEAN=1`로 선행 생략 가능.

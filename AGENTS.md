@@ -64,7 +64,8 @@
 | SYSID_THISMAV | i+1 | 1 | 2 | 3 | --instance는 sysid 자동 유도 안 함 |
 | DDS 도메인 d | i+1 | **1** | **2** | **3** | §5.1 확정 |
 | ROS 네임스페이스 | /drone{i+1} | /drone1 | /drone2 | /drone3 | 저쪽 /a2a/drone1/* 기존 컨벤션 정합 |
-| SITL cwd | sitl_ws/i{i}/ | i0/ | i1/ | i2/ | eeprom.bin cwd 상대 (Storage.cpp:91) |
+| SITL cwd | multi/i{i}/ | i0/ | i1/ | i2/ | eeprom.bin cwd 상대 (Storage.cpp:91) |
+| gz 스폰 오프셋 (동E,북N) | 20m 등변 삼각 | (0,0) | (−10,−17.32) | (+10,−17.32) | d1 출발지 고정·d2·d3 후방; home 공유·navsat=home+gz (규격서 §7, 실측 쌍간≈20m) |
 
 ### /ap/* (SITL_i → 지능, domain d 내)
 펌웨어 고정 토픽명 (`AP_DDS_Topic_Table.h`) — `/ap/pose/filtered`, `/ap/navsat`, `/ap/battery`, `/ap/cmd_vel`(구독) 등 17종. **네임스페이스 불가 → 도메인으로만 분리.**
@@ -82,7 +83,7 @@
 
 ### 확정 구조
 - **분리축 = DDS 도메인**: 기체 i → domain i+1 (d1/d2/d3). 로컬 운용 도구(RViz·진단)는 필요 도메인을 골라 접속. domain 0은 단일 인스턴스 모드 전용으로 보존.
-- **수신 매핑 (정정 2026-07-09)**: 도메인 1/2/3 ↔ **드론별 체화지능 1/2/3** (1:1). d1=본기(카메라/vision), d2·d3=leaf(rule_only, 무카메라). **감독지능은 별도 도메인/인스턴스가 아님** — 체화 내부(주로 본기)의 비동기 루프로 NATS `swarm.state.*` 상태 스트림을 소비(DDS 무관). 따라서 DDS 도메인은 순수 체화 3개 기준.
+- **수신 매핑 (정정 2026-07-09)**: 도메인 1/2/3 ↔ **드론별 체화지능 1/2/3** (1:1). d1=본기(vision), d2·d3=leaf(rule_only). 카메라는 3기 전부 탑재 — 원격 소비는 `/drone{N}/camera/image/compressed` 전용(raw는 도메인 내 로컬), 인지(range)·vision은 d1만 (D10 개정 2026-07-11). **감독지능은 별도 도메인/인스턴스가 아님** — 체화 내부(주로 본기)의 비동기 루프로 NATS `swarm.state.*` 상태 스트림을 소비(DDS 무관). 따라서 DDS 도메인은 순수 체화 3개 기준.
 - **기체별 수직 스택**: SITL_i + agent_i + MAVProxy_i + bridge_i + rsp_i가 한 세트로 같은 도메인에 상주. `/clock` 브리지는 **도메인당 1개** — 각 bridge_i가 자기 도메인에 전역 `/clock` 발행 (도메인 내 유일하므로 중복 아님; 저쪽 소비자도 sim time 필요 — 설계 정본 D4).
 - **gz 레이어**: 단일 월드 `map`에 모델 사본 3종 `iris_d1/d2/d3` — 사본별 fdm_port_in(9002+10i)·절대 토픽 개명(`/drone{i}/gimbal/cmd_*`, `/drone{i}/range/*`). 멀티용 월드 SDF는 신규 파일로 (기존 `iris_runway_des.sdf` 불변).
 - **기존 파이프라인 불변**: `start_sim.sh`/단일 모드는 그대로. 멀티는 `start_multi_sim.sh`(신규) 병행.

@@ -29,14 +29,14 @@
 - **D1. 분리축 = DDS 도메인, d = i+1** (F6). domain 0은 단일 모드 전용 보존 → 멀티·단일 혼동 차단.
 - **D2. 단일 gz 서버 + 한 월드 3모델** (F15, GZ_PARTITION 미사용). 신규 월드 `iris_runway_multi.sdf` — 기존 월드 불변.
 - **D2b. 멀티 모델은 `lock_step=0`** (2026-07-09 실측 확정): lock_step=1은 온라인 기체의 servo 대기 루프 직렬화 + 미접속 기체 폴링으로 sim time 붕괴(RTF 0.2%, 링크 다운 실측 — `ArduPilotPlugin.cc:1194-1203` while 루프). 0 전환 후 2기 RTF 20%·정상 부팅. 단일 모드는 lock_step=1 불변.
-- **D10. leaf 기체(d2/d3) 무카메라** (사용자 확정 2026-07-09): 카메라·YOLO는 본기 d1 1대만 정본 — S-5 집단감독은 NATS `swarm.state.*` 1Hz 상태 스트림에서 지표 산출, leaf는 vision 없는 경량 상태발행기(rule_only). 구현: `gimbal_small_3d_nocam` 사본 참조 + d2/d3 브리지에서 camera·range 4항목 제거. **유의**: 본기 장애물 조우 시나리오는 본기 카메라 시야에서 발생해야 함(leaf 쪽 장애물은 상태 이상으로만 감독에 잡힘).
+- **D10 (개정 2026-07-11). 카메라 3기 전부 탑재 — 원격 전송은 compressed 전용**: 사용자 결정으로 leaf(d2/d3) 카메라 복원(개정 전=leaf 무카메라). 각 기체가 자기 도메인에 `/drone{N}/camera/image`(로컬 전용)+`/drone{N}/camera/image/compressed`(원격 소비, ~29KB/frame [단일 실측]) 발행 — 3채널 합 ≈660KB/s로 Wi-Fi 수용. **인지(range)는 여전히 d1만**(leaf rule_only). 구현: gen_multi_assets(카메라 짐벌 3벌+브리지 camera 보존/range만 제거)+drone_multi.launch 전 인스턴스 republisher. GPU 렌더 ×3 RTF 하락은 실기동 게이트에서 실측.
 - **D3. 기체별 수직 스택 동일 도메인 상주**: SITL_i + agent_i + MAVProxy_i + bridge_i + rsp_i → domain i+1.
 - **D4. `/clock`은 도메인당 1개** — 각 bridge_i가 자기 도메인에 전역 `/clock` 발행 (도메인 내 유일하므로 중복 아님. 소비자(저쪽 인스턴스)도 sim time 필요).
 - **D5. 인스턴스 작업 디렉토리 `multi/i{0,1,2}/`** — eeprom 분리 (F7). `ros2 launch`를 해당 cwd에서 실행하면 ExecuteProcess가 상속.
 - **D6. MAVProxy out은 launch 인자로 주입** (`[저쪽IP]:14555+10i`) — sync_and_build sed 의존 제거 (멀티 경로에서만).
 - **D7. 수신 매핑 (정정 2026-07-09)**: 도메인 1/2/3 ↔ **드론별 체화지능 1/2/3** (1:1, d1=본기·d2·d3=leaf). **감독지능은 별도 도메인/인스턴스가 아니라 체화 내부 비동기 루프** — NATS `swarm.state.*` 상태 스트림 소비(DDS 무관). 따라서 domain_bridge 불필요.
 - **D8. path_marker_node는 d1 소속** 초기 배치 (`[가정]` 경로 시각화 주 소비자=drone1 — 필요 시 인스턴스화).
-- **D9. 스폰 대형·GPS 이격 (최종 확정 2026-07-09 실측)**: 기체 i를 gz **북(+Y) 30m·i**에 스폰(`SPAWN_NORTH_M={0,30,60}`). **home GPS는 셋 다 공유**(`37.39447652,126.6381927`) — `navsat = home + gz_pos`라 gz 30m 스폰만으로 navsat이 30m 간격이 됨(실측: d1/d2/d3 = +0/+30/+60m). ⚠️ home도 오프셋하면 이중계산(60m)되므로 **home 오프셋 금지**. (초기안의 y=+20i·home 동반 오프셋은 폐기 — GPS 실측으로 정정.)
+- **D9. 스폰 대형·GPS 이격 (최종 확정 2026-07-09 실측)**: **20m 등변 삼각형** — d1(본기) 출발지 고정(0,0), d2 좌후(동−10·북−17.32), d3 우후(동+10·북−17.32). **home GPS는 셋 다 공유**(`37.39447652,126.6381927`) — `navsat = home + gz_pos`라 gz 오프셋만으로 GPS 이격 생성. 실측 쌍간 거리 ≈19.8/20.1/20.2m(전 쌍 >10m → 규칙 #11 오탐 없음, 기준선 확보; <10m 진입 시에만 발화해 조기 수렴 감지 보존). ⚠️ home 동반 오프셋 금지(이중계산). 지능측(.29) 안전반경 10m 불변 결정에 대형으로 대응 — 정점방향·정확오프셋은 시뮬 위임(쌍간 20m만 충족). (폐기 이력: 북 선형 {0,30,60}·30m 삼각=GUI 과대, 2.5m=규칙#11 오탐.)
 
 ## 3. 신규/수정 산출물 목록 (구현 시 이 순서)
 
@@ -70,7 +70,7 @@
 |---|---|
 | ~~lock_step=1 스톨~~ | ✅ 해소(2026-07-09): D2b lock_step=0 확정 — RTF 0.2%→20% 실측 |
 | gpu_lidar ×3 GPU 부하 (fan3d 계열) | 2기 RTF 20% 실측 — 3기에서 재실측, 필요 시 leaf 라이다 축소 검토 |
-| ~~카메라 ×3 대역폭~~ | ✅ 해소(2026-07-09): D10 leaf 무카메라 확정 — 카메라는 d1 1대만 |
+| ~~카메라 ×3 대역폭~~ | ✅ 해소(2026-07-11, D10 개정): 원격 전송 compressed 전용 — 3채널 합 ≈660KB/s (raw ×3=132Mbps는 금지 유지) |
 | eeprom 첫 부팅 시 parm 미반영 (F12 함정) | 인스턴스 cwd가 신규라 eeprom 없음 → defaults 체인이 최초 기록 (문제 없음). 단 parm 수정 후엔 해당 `multi/i*/eeprom.bin` 삭제 필요 — RULES 트러블슈팅에 등재 |
 | stop 전역 pkill이 단일·멀티 구분 못 함 | 확정: 동시 운용 금지 (단일 XOR 멀티) — start_multi가 기동 전 stop_sim 선행 |
 | 도메인 분리로 로컬 진단 번거로움 | `ROS_DOMAIN_ID=N` 프리픽스 관례를 RULES에 명문화, check 스크립트는 T3 후 멀티 대응 |
