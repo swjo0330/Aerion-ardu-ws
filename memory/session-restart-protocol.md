@@ -25,6 +25,7 @@
 2. **교차확인**: 스크립트 출력 `감지된 내 NIC/IP`가 유저가 말한 내 IP와 일치하는가? 다른 /24면 ⚠️ 경고(같은 /16 랩이면 정상, 아니면 도달 불가 → 실물 재확인)
 3. `bash start_sim.sh` — 프리플라이트가 바인딩 NIC 생존 확인(죽었으면 활성 목록 출력 + fail-fast, "부재 NIC=노드 사망" 함정 차단)
 4. 기동 시그니처 `DDS: Initialization passed` + `AHRS: EKF3 active` 확인
+5. **arducopter 교체 검증**: `ps -o pid,etime -p $(pgrep -f arducopter|head -1)` — 새 PID + 초 단위 나이 = fresh 정상 (분 단위 = 미교체 신호). 매 재시작 보고에 `PID 전→후 · 나이` 표기 (근거: 파일 메모리 `feedback_restart_arducopter_verify.md`, 절차 정본: `Docs/RULES.md` 재시작 절차)
 - **캐스트 정책(공유 회사망)**: Peer 유니캐스트 **유지** — 디폴트 멀티캐스트로 돌리지 말 것(디스커버리·대형데이터 서브넷 flooding). 근본은 raw를 wire에 안 올리기 [[feedback_dds_raw_lan_flood]]
 - IP만으로 NIC 판단 금물 — 위 자동감지가 실물 기준으로 결정한다
 - **수치 인용은 '실측 로그' 기준** — 성능치·포트·파라미터 값은 기억이 아니라 측정 시점이 명기된 실측 로그(`logs/`·`Docs/setups/` 기록)에서 인용. 실측 근거가 없으면 재측정이 인용보다 먼저다

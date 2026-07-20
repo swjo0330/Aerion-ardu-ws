@@ -170,19 +170,23 @@ ros2 topic echo /range/front --once | grep -A 1 "^ranges:"
 - ⚠️ 위 "누적 저하(RTF 100% 유지)"와는 **다른 현상** — 이건 update_rate가 RTF 자체를 깎는 것(렌더 부하), 누적 저하는 RTF 정상인데 Hz만 드리프트.
 
 **재시작 절차 (정본 — 자원 프리·누적 제거 통합, 2026-07-13):**
-1. `bash stop_sim.sh` — 2단 pkill(11종+`_ros2_daemon`) → 포트 정리(단일·멀티 오프셋 5760/70/80·2019/29/39·14555/65/75) → Fast-DDS SHM(`fastrtps_*`) 제거 → **자원 프리 자체검증 리포트**
-2. `bash start_sim.sh` — 기존 sim 잔재 감지 시 stop_sim 자동 선행(clean 보증), 이후 기동. `NO_CLEAN=1`로 선행 생략 가능.
-3. 기동 성공 = `DDS: Initialization passed` + `EKF3 active` + (compressed) `image_republisher` 기동 로그.
+1. (권장) 종료 전 `ps -o pid,etime -p $(pgrep -f arducopter|head -1)`로 **현 arducopter PID·나이 기록** — 교체 검증의 기준점.
+2. `bash stop_sim.sh` — 2단 pkill(11종+`_ros2_daemon`) → **좀비 arducopter/gz 3회 재확인 kill** → 포트 정리(단일·멀티 오프셋 5760/70/80·2019/29/39·14555/65/75) → Fast-DDS SHM(`fastrtps_*`) 제거 → **자원 프리 자체검증 리포트** `[자원 프리 검증: 프로세스 0 · arducopter 0 · 포트 0 · SHM 0]` (0 아니면 재실행).
+3. `bash start_sim.sh` — NIC 프리플라이트(죽은 NIC fail-fast) → 기존 sim 잔재 감지 시 stop_sim 자동 선행(clean 보증) → 기동. `NO_CLEAN=1`로 선행 생략 가능.
+4. 기동 성공 = `DDS: Initialization passed` + `EKF3 active` + (compressed) `image_republisher` 기동 로그 + 바인딩 에러 0.
+5. **arducopter 교체 검증 (2026-07-16 규율)**: 기동 후 `ps -o pid,etime -p $(pgrep -f arducopter|head -1)` — **PID가 종료 전과 다르고 나이가 초 단위**면 fresh 교체 정상. 나이가 분 단위로 오래됐으면 교체 실패 신호(조사). SITL 좀비·카메라 누적 저하가 새 프로세스로 리셋되는지의 최종 증거. 보고에 `PID a→b · 나이 Ns` 표기 (실증 사슬 예: 43548→52540→57745→64512, 각 나이 10~45s).
+
+⚠️ **재시작 ≠ parm 반영**: SITL은 eeprom.bin(실행 cwd)을 우선 로드하므로 **parm 파일을 바꿨다면 재시작만으론 반영 안 됨** — eeprom 백업 후 삭제가 선행돼야 함 (CLAUDE.md §5, 기존 백업 5종 `eeprom.bin.before_*`). PID가 새것인데 파라미터가 옛값이면 이 함정.
 
 ## CycloneDDS 상세
 
-`cyclonedds.xml` 핵심 설정 (정본은 워크스페이스 루트 파일):
+`cyclonedds.xml` 핵심 설정 (정본은 워크스페이스 루트 파일). **NetworkInterface·Peer는 `sync_and_build.sh <저쪽IP> <내IP>`가 자동 재작성**(내 IP 소유 NIC 특정 — en7 랩/en5 유선/en0 Wi-Fi 이동에 자가치유, 수동 편집 불필요):
 
 ```xml
-<NetworkInterface name="en7"/>
+<NetworkInterface name="[자동: 내 IP 소유 NIC]"/>
 <MaxMessageSize>1400B</MaxMessageSize>
 <FragmentSize>1344B</FragmentSize>
-<Peer address="[저쪽IP]"/>
+<Peer address="[자동: 저쪽IP]"/>
 ```
 
 **왜 1400B/1344B인가 (실측 근거):** 기본 `MaxMessageSize=65000B`는 하나의 RTPS fragment가 ~64KB UDP 패킷 → MTU 1500B 네트워크에서 44개 IP fragment로 쪼개짐 → IP fragment 하나라도 유실되면 전체 RTPS fragment 유실 → 6.2MB 카메라 이미지(96 RTPS fragment)가 재조립 실패. MTU 이하(1400B)로 잡으면 RTPS fragment 수는 ~4400개/프레임으로 늘지만 **IP fragmentation 자체를 회피**해 유실 문제를 완전히 우회 (2026-04-10 적용).

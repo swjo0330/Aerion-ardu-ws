@@ -40,6 +40,10 @@ export CYCLONEDDS_URI="file://${SCRIPT_DIR}/cyclonedds.xml"
 # 프리플라이트: DDS가 바인딩한 NIC가 실제로 살아있는지 확인.
 # 죽은/부재 NIC 바인딩은 "failed to create domain"으로 노드가 조용히 죽는 반복 함정 →
 # 여기서 fail-fast + 해결법 안내(장소 이동으로 en5→en0 등 NIC명이 바뀌면 재발).
+if [ ! -f "${SCRIPT_DIR}/cyclonedds.xml" ]; then
+    echo "❌ [start_sim] cyclonedds.xml 부재 — DDS 설정 없이 기동 불가. sync_and_build.sh 먼저 실행하세요. 중단."
+    exit 1
+fi
 BOUND_NIC=$(grep -oE '<NetworkInterface name="[^"]*"' "${SCRIPT_DIR}/cyclonedds.xml" | sed -E 's/.*name="([^"]*)".*/\1/')
 if [ -n "$BOUND_NIC" ]; then
     BOUND_IP=$(ipconfig getifaddr "$BOUND_NIC" 2>/dev/null)

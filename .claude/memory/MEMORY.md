@@ -5,6 +5,9 @@
 - [ardu_ws 프로젝트 상태](project_ardu_ws.md) — macOS ARM SITL+Gazebo+ROS2, en7 유선; 하네스 도입(CLAUDE/FABLE5/게이트)·멀티SITL 3기(20m삼각·도메인분리)·Aerion-integration 연동 규격·5단계 검증 게이트
 - [빌드 패치 및 피드백](feedback_build.md) — colcon cmake 옵션, protobuf 충돌, CycloneDDS AllowMulticast 주의
 - [DDS 대형 메시지 전송 해결](feedback_dds_large_msg.md) — /camera/image IP fragmentation 문제, MaxMessageSize/FragmentSize 설정, 진단 순서
+- [재시작 arducopter 교체 검증](feedback_restart_arducopter_verify.md) — 재시작마다 arducopter PID·나이 표기(초=정상 fresh, 분=미교체 신호). stop_sim은 pkill-9+좀비루프로 확실히 죽임
+- [시작 IP 방법론](feedback_startup_ip_methodology.md) — 유저가 매 시작 내IP+저쪽IP 통보 → 항상 sync_and_build로 Peer-서브넷 NIC 자동바인딩+프리플라이트. 공유망은 Peer 유니캐스트 유지(디폴트 멀티캐스트 금지)
+- [DDS raw 카메라 회사망 포화](feedback_dds_raw_lan_flood.md) — raw 80Mbps가 en5바인딩+reliable파편화 재전송으로 200~300Mbps 증폭→내부망 전체 혼잡. stop전후 1000:1 확정, 멀티캐스트/compressed 무죄, 수정 나중
 - [DDS over Wi-Fi 구조적 한계](feedback_dds_wifi.md) — 고부하 한계·완화책 + ⚠️실측 반례(집 480p 6.5Hz 성공): 안 되면 매체 탓 전에 Peer IP·NIC 실측(부재 NIC=노드 사망)
 - [distance-sensors 구현 상태](project_distance_sensors.md) — iris 전/좌/우 gpu_lidar 3개 → RNGFND1~3 직결, switch 스크립트 토글, 잔여 검증 박스 spawn
 - [switch-variants 백업 패턴](feedback_switch_variants.md) — 설정 파일 `.baseline`/`.variant` 사본 + cp swap 토글, src/install 두 트리 양쪽 동시 처리

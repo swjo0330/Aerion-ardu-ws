@@ -24,9 +24,13 @@ pkill -9 -f "gz sim" 2>/dev/null
 pkill -9 -f rviz2 2>/dev/null
 pkill -9 -f arducopter 2>/dev/null
 pkill -9 -f mavproxy 2>/dev/null
+pkill -9 -f micro_ros_agent 2>/dev/null   # XRCE agent 잔존 시 세션 키 충돌·SHM 재누적 (2026-07-16 보강)
 pkill -9 -f parameter_bridge 2>/dev/null
 pkill -9 -f robot_state_publisher 2>/dev/null
+pkill -9 -f relay 2>/dev/null
+pkill -9 -f rmw_zenohd 2>/dev/null
 pkill -9 -f "ros2 launch" 2>/dev/null
+pkill -9 -f ardupilot_sitl 2>/dev/null
 pkill -9 -f path_marker_node 2>/dev/null
 pkill -9 -f "image_transport/republish" 2>/dev/null
 pkill -9 -f _ros2_daemon 2>/dev/null
@@ -62,7 +66,7 @@ if [ -d "$SHM_DIR" ]; then
 fi
 
 # 종료 후 자체 검증 (누적·잔여 0 확인 — 남으면 경고)
-LEFT=$(pgrep -f "arducopter|gz sim|ruby.*gz|mavproxy|micro_ros_agent|path_marker|parameter_bridge|rviz2|robot_state|ros_gz|image_transport/republish|_ros2_daemon" 2>/dev/null | wc -l | tr -d ' ')
+LEFT=$(pgrep -f "arducopter|gz sim|ruby.*gz|mavproxy|micro_ros_agent|path_marker|parameter_bridge|rviz2|robot_state|ros_gz|image_transport/republish|_ros2_daemon|relay|rmw_zenohd" 2>/dev/null | wc -l | tr -d ' ')
 ARDU=$(pgrep -f arducopter 2>/dev/null | wc -l | tr -d ' ')   # SITL 좀비 명시 카운트 (fps 저하 주범)
 PORT=$(lsof -nP -iTCP:5760 -iTCP:5770 -iTCP:5780 2>/dev/null | grep -c LISTEN)
 SHM_LEFT=$(ls -1 "$SHM_DIR"/fastrtps_* 2>/dev/null | wc -l | tr -d ' ')
